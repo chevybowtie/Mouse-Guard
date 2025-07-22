@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MouseGuard", "MouseGuard.csproj", "{A200BBA7-4697-A2BC-F45E-240C84FAE255}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A200BBA7-4697-A2BC-F45E-240C84FAE255}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A200BBA7-4697-A2BC-F45E-240C84FAE255}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A200BBA7-4697-A2BC-F45E-240C84FAE255}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A200BBA7-4697-A2BC-F45E-240C84FAE255}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5B3B2984-3E86-4453-B491-E0CD63EC58D1}
+	EndGlobalSection
+EndGlobal

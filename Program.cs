@@ -115,7 +115,7 @@ class Program
         // Tray icon initialization
         trayIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
+            Icon = new Icon("MouseGuard.ico"),
             Text = Strings.TrayIconText,
             Visible = true,
             ContextMenuStrip = BuildContextMenu()
@@ -191,12 +191,84 @@ class Program
             menu.Items.Add(item);
         }
 
-        // Add separator and advanced settings
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(Strings.AdvancedSettings, null, (s, e) => ShowAdvancedSettings(menu));
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("About", null, (s, e) => ShowAboutDialog());
         menu.Items.Add(Strings.Exit, null, (s, e) => Exit());
 
+        // Add About option
+
         return menu;
+    }
+
+    private static void ShowAboutDialog()
+    {
+        var version = typeof(Program).Assembly.GetName().Version?.ToString() ?? "Unknown";
+        var repo = "https://github.com/chevybowtie/Mouse-Guard";
+
+        var aboutForm = new Form
+        {
+            Text = "About Mouse Guard",
+            Width = 340,
+            Height = 180,
+            FormBorderStyle = FormBorderStyle.FixedDialog,
+            StartPosition = FormStartPosition.CenterScreen,
+            MaximizeBox = false,
+            MinimizeBox = false
+        };
+
+        var lblTitle = new Label
+        {
+            Text = "Mouse Guard",
+            Font = new Font(FontFamily.GenericSansSerif, 12, FontStyle.Bold),
+            Dock = DockStyle.Top,
+            Height = 32,
+            TextAlign = ContentAlignment.MiddleCenter
+        };
+
+        var lblVersion = new Label
+        {
+            Text = $"Version: {version}",
+            Dock = DockStyle.Top,
+            Height = 24,
+            TextAlign = ContentAlignment.MiddleCenter
+        };
+
+        var link = new LinkLabel
+        {
+            Text = repo,
+            Dock = DockStyle.Top,
+            Height = 24,
+            TextAlign = ContentAlignment.MiddleCenter
+        };
+        link.Links.Add(0, repo.Length, repo);
+        link.LinkClicked += (s, e) =>
+        {
+            if (e.Link?.LinkData != null)
+            {
+                System.Diagnostics.Process.Start(new ProcessStartInfo
+                {
+                    FileName = e.Link.LinkData.ToString(),
+                    UseShellExecute = true
+                });
+            }
+        };
+
+        var btnOK = new Button
+        {
+            Text = "OK",
+            DialogResult = DialogResult.OK,
+            Dock = DockStyle.Bottom
+        };
+
+        aboutForm.Controls.Add(btnOK);
+        aboutForm.Controls.Add(link);
+        aboutForm.Controls.Add(lblVersion);
+        aboutForm.Controls.Add(lblTitle);
+
+        aboutForm.AcceptButton = btnOK;
+        aboutForm.ShowDialog();
     }
 
     static void ShowAdvancedSettings(ContextMenuStrip menu)
