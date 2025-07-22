@@ -1,0 +1,36 @@
+# Visual Studio build files
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS Code settings
+.vscode/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Application settings
+settings.json
+
+# Build artifacts
+*.exe
+*.dll
+*.pdb
+
+# NuGet packages
+*.nupkg
+packages/
+.nuget/
+
+# Logs
+*.log
+
+# Others
+_ReSharper*/
+*.resharper
+*.sln.ide
