@@ -5,7 +5,8 @@ using System.Management;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows.Forms;
-using System.Diagnostics; 
+using System.Diagnostics;
+using MouseGuard;
 
 /// <summary>
 /// Mouse Guard application: blocks mouse from entering a selected screen.
@@ -111,11 +112,11 @@ class Program
         else
             blockedScreenIndex = null;
 
-        // Initialize tray icon (after blockedScreenIndex is set)
+        // Tray icon initialization
         trayIcon = new NotifyIcon
         {
             Icon = SystemIcons.Application,
-            Text = "Mouse Guard",
+            Text = Strings.TrayIconText,
             Visible = true,
             ContextMenuStrip = BuildContextMenu()
         };
@@ -155,9 +156,9 @@ class Program
                 ? $"{monitorName} ({screen.DeviceName})"
                 : screen.DeviceName;
 
-            // Create menu item for each screen with friendly name, device name, and resolution
+            // Context menu building
             var item = new ToolStripMenuItem(
-                $"Block Screen {i + 1} {(screen.Primary ? "(Primary)" : "")} - {displayName} [{screen.Bounds.Width}x{screen.Bounds.Height}]")
+                Strings.BlockScreenMenu(i + 1, screen.Primary ? Strings.Primary : "", displayName, screen.Bounds.Width, screen.Bounds.Height))
             {
                 CheckOnClick = true,
                 Checked = blockedScreenIndex == index
@@ -192,8 +193,8 @@ class Program
 
         // Add separator and advanced settings
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Advanced Settings...", null, (s, e) => ShowAdvancedSettings(menu));
-        menu.Items.Add("Exit", null, (s, e) => Exit());
+        menu.Items.Add(Strings.AdvancedSettings, null, (s, e) => ShowAdvancedSettings(menu));
+        menu.Items.Add(Strings.Exit, null, (s, e) => Exit());
 
         return menu;
     }
@@ -209,7 +210,7 @@ class Program
                 currentHotkey = dlg.SelectedHotkey;
                 RegisterHotkey(currentHotkey);
                 SaveSettings();
-                trayIcon!.Text = $"Mouse Guard ({(blockingEnabled ? "Blocking" : "Unblocked")})\nHotkey: {HotkeyToString(currentHotkey)}";
+                trayIcon!.Text = $"{Strings.TrayIconText} ({(blockingEnabled ? "Blocking" : "Unblocked")})\nHotkey: {HotkeyToString(currentHotkey)}";
             }
         }
     }
@@ -217,7 +218,7 @@ class Program
     static void OnHotkeyPressed()
     {
         blockingEnabled = !blockingEnabled;
-        trayIcon!.Text = $"Mouse Guard ({(blockingEnabled ? "Blocking" : "Unblocked")})\nHotkey: {HotkeyToString(currentHotkey)}";
+        trayIcon!.Text = $"{Strings.TrayIconText} ({(blockingEnabled ? "Blocking" : "Unblocked")})\nHotkey: {HotkeyToString(currentHotkey)}";
     }
 
     /// <summary>
@@ -261,10 +262,11 @@ class Program
                 SetCursorPos(safeX, safeY);
                 ShowCursor(false);
 
+                // Notification usage
                 if (!hasShownBlockNotification)
                 {
                     silentNotification?.Close();
-                    silentNotification = new SilentNotification("Mouse Blocked", "The mouse was blocked from entering the selected screen.");
+                    silentNotification = new SilentNotification(Strings.NotificationTitle, Strings.NotificationMessage);
                     silentNotification.ShowNearTray();
                     hasShownBlockNotification = true;
                 }
@@ -400,7 +402,7 @@ class Program
         private Label lbl;
         public HotkeyDialog(Keys initial)
         {
-            Text = "Select Hotkey";
+            Text = Strings.HotkeyDialogTitle;
             Width = 300; Height = 120;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterScreen;
@@ -427,7 +429,7 @@ class Program
         }
         private void UpdateLabel()
         {
-            lbl.Text = "Press new hotkey (Esc=Cancel, Enter=OK):\n" + HotkeyToString(SelectedHotkey);
+            lbl.Text = Strings.HotkeyDialogPrompt(HotkeyToString(SelectedHotkey));
         }
     }
 
