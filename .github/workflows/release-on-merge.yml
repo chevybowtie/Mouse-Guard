@@ -25,6 +25,9 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release
 
+      - name: Publish
+        run: dotnet publish --configuration Release --output ./publish
+
       - name: Extract App Name and Version from .csproj
         id: extract_metadata
         shell: pwsh
@@ -35,6 +38,11 @@ jobs:
           echo "APP_NAME=$appName" | Out-File -FilePath $env:GITHUB_ENV -Append
           echo "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
 
+      - name: Create ZIP package
+        shell: pwsh
+        run: |
+          Compress-Archive -Path ./publish/* -DestinationPath ${{ env.APP_NAME }}-v${{ env.VERSION }}-win-x64.zip
+
       # Create a GitHub Release
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -43,5 +51,6 @@ jobs:
           name: ${{ env.APP_NAME }} v${{ env.VERSION }}
           draft: false
           prerelease: false
+          files: ${{ env.APP_NAME }}-v${{ env.VERSION }}-win-x64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
