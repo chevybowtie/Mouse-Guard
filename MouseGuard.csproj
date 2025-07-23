@@ -7,6 +7,10 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>false</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,7 +27,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>1.0.7</Version>
+    <Version>1.0.8</Version>
     <AppName>MouseGuard</AppName>
   </PropertyGroup>
 

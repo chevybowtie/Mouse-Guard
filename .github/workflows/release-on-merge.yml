@@ -26,7 +26,7 @@ jobs:
         run: dotnet build --configuration Release
 
       - name: Publish
-        run: dotnet publish --configuration Release --output ./publish
+        run: dotnet publish --configuration Release --runtime win-x64 --output ./publish
 
       - name: Extract App Name and Version from .csproj
         id: extract_metadata
