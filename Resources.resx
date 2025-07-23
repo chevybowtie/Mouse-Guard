@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, ...</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, ...</value>
+  </resheader>
+  <data name="TrayIconText" xml:space="preserve">
+    <value>Mouse Guard</value>
+  </data>
+  <data name="BlockScreenMenu" xml:space="preserve">
+    <value>Block Screen {0} {1} - {2} [{3}x{4}]</value>
+  </data>
+  <data name="Primary" xml:space="preserve">
+    <value>(Primary)</value>
+  </data>
+  <data name="AdvancedSettings" xml:space="preserve">
+    <value>Advanced Settings...</value>
+  </data>
+  <data name="Exit" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+  <data name="HotkeyDialogTitle" xml:space="preserve">
+    <value>Select Hotkey</value>
+  </data>
+  <data name="HotkeyDialogPrompt" xml:space="preserve">
+    <value>Press new hotkey (Esc=Cancel, Enter=OK):\n{0}</value>
+  </data>
+  <data name="NotificationTitle" xml:space="preserve">
+    <value>Mouse Blocked</value>
+  </data>
+  <data name="NotificationMessage" xml:space="preserve">
+    <value>The mouse was blocked from entering the selected screen.</value>
+  </data>
+</root>

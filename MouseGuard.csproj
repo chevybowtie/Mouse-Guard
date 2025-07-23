@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Management" Version="9.0.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="MouseGuard.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <PropertyGroup>
+    <ApplicationIcon>MouseGuard.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Version>1.0.1</Version>
+    <AppName>MouseGuard</AppName>
+  </PropertyGroup>
+
+</Project>
