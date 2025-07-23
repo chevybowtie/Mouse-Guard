@@ -26,11 +26,13 @@ jobs:
 
       - name: Extract App Name and Version from .csproj
         id: extract_metadata
+        shell: pwsh
         run: |
-          APP_NAME=$(grep -oPm1 "(?<=<AppName>)[^<]+" MouseGuard.csproj)
-          VERSION=$(grep -oPm1 "(?<=<Version>)[^<]+" MouseGuard.csproj)
-          echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          $csprojContent = Get-Content -Path "MouseGuard.csproj"
+          $appName = ($csprojContent | Select-String -Pattern '<AppName>(.*?)</AppName>' -AllMatches).Matches.Groups[1].Value
+          $version = ($csprojContent | Select-String -Pattern '<Version>(.*?)</Version>' -AllMatches).Matches.Groups[1].Value
+          echo "APP_NAME=$appName" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       # Create a GitHub Release
       - name: Create Release
