@@ -1,12 +1,8 @@
-using System;
-using System.Drawing;
-using System.IO;
-using System.Management;
 using System.Runtime.InteropServices;
 using System.Text.Json;
-using System.Windows.Forms;
 using System.Diagnostics;
 using MouseGuard;
+using System.Management;
 
 /// <summary>
 /// Mouse Guard application: blocks mouse from entering a selected screen.
