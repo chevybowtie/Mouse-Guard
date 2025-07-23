@@ -1,11 +1,8 @@
-using System;
-using System.Drawing;
-using System.IO;
-using System.Management;
 using System.Runtime.InteropServices;
 using System.Text.Json;
-using System.Windows.Forms;
-using System.Diagnostics; 
+using System.Diagnostics;
+using MouseGuard;
+using System.Management;
 
 /// <summary>
 /// Mouse Guard application: blocks mouse from entering a selected screen.
@@ -111,11 +108,11 @@ class Program
         else
             blockedScreenIndex = null;
 
-        // Initialize tray icon (after blockedScreenIndex is set)
+        // Tray icon initialization
         trayIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
-            Text = "Mouse Guard",
+            Icon = new Icon("MouseGuard.ico"),
+            Text = Strings.TrayIconText,
             Visible = true,
             ContextMenuStrip = BuildContextMenu()
         };
@@ -155,9 +152,9 @@ class Program
                 ? $"{monitorName} ({screen.DeviceName})"
                 : screen.DeviceName;
 
-            // Create menu item for each screen with friendly name, device name, and resolution
+            // Context menu building
             var item = new ToolStripMenuItem(
-                $"Block Screen {i + 1} {(screen.Primary ? "(Primary)" : "")} - {displayName} [{screen.Bounds.Width}x{screen.Bounds.Height}]")
+                Strings.BlockScreenMenu(i + 1, screen.Primary ? Strings.Primary : "", displayName, screen.Bounds.Width, screen.Bounds.Height))
             {
                 CheckOnClick = true,
                 Checked = blockedScreenIndex == index
@@ -190,12 +187,84 @@ class Program
             menu.Items.Add(item);
         }
 
-        // Add separator and advanced settings
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Advanced Settings...", null, (s, e) => ShowAdvancedSettings(menu));
-        menu.Items.Add("Exit", null, (s, e) => Exit());
+        menu.Items.Add(Strings.AdvancedSettings, null, (s, e) => ShowAdvancedSettings(menu));
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("About", null, (s, e) => ShowAboutDialog());
+        menu.Items.Add(Strings.Exit, null, (s, e) => Exit());
+
+        // Add About option
 
         return menu;
+    }
+
+    private static void ShowAboutDialog()
+    {
+        var version = typeof(Program).Assembly.GetName().Version?.ToString() ?? "Unknown";
+        var repo = "https://github.com/chevybowtie/Mouse-Guard";
+
+        var aboutForm = new Form
+        {
+            Text = "About Mouse Guard",
+            Width = 340,
+            Height = 180,
+            FormBorderStyle = FormBorderStyle.FixedDialog,
+            StartPosition = FormStartPosition.CenterScreen,
+            MaximizeBox = false,
+            MinimizeBox = false
+        };
+
+        var lblTitle = new Label
+        {
+            Text = "Mouse Guard",
+            Font = new Font(FontFamily.GenericSansSerif, 12, FontStyle.Bold),
+            Dock = DockStyle.Top,
+            Height = 32,
+            TextAlign = ContentAlignment.MiddleCenter
+        };
+
+        var lblVersion = new Label
+        {
+            Text = $"Version: {version}",
+            Dock = DockStyle.Top,
+            Height = 24,
+            TextAlign = ContentAlignment.MiddleCenter
+        };
+
+        var link = new LinkLabel
+        {
+            Text = repo,
+            Dock = DockStyle.Top,
+            Height = 24,
+            TextAlign = ContentAlignment.MiddleCenter
+        };
+        link.Links.Add(0, repo.Length, repo);
+        link.LinkClicked += (s, e) =>
+        {
+            if (e.Link?.LinkData != null)
+            {
+                System.Diagnostics.Process.Start(new ProcessStartInfo
+                {
+                    FileName = e.Link.LinkData.ToString(),
+                    UseShellExecute = true
+                });
+            }
+        };
+
+        var btnOK = new Button
+        {
+            Text = "OK",
+            DialogResult = DialogResult.OK,
+            Dock = DockStyle.Bottom
+        };
+
+        aboutForm.Controls.Add(btnOK);
+        aboutForm.Controls.Add(link);
+        aboutForm.Controls.Add(lblVersion);
+        aboutForm.Controls.Add(lblTitle);
+
+        aboutForm.AcceptButton = btnOK;
+        aboutForm.ShowDialog();
     }
 
     static void ShowAdvancedSettings(ContextMenuStrip menu)
@@ -209,7 +278,7 @@ class Program
                 currentHotkey = dlg.SelectedHotkey;
                 RegisterHotkey(currentHotkey);
                 SaveSettings();
-                trayIcon!.Text = $"Mouse Guard ({(blockingEnabled ? "Blocking" : "Unblocked")})\nHotkey: {HotkeyToString(currentHotkey)}";
+                trayIcon!.Text = $"{Strings.TrayIconText} ({(blockingEnabled ? "Blocking" : "Unblocked")})\nHotkey: {HotkeyToString(currentHotkey)}";
             }
         }
     }
@@ -217,7 +286,7 @@ class Program
     static void OnHotkeyPressed()
     {
         blockingEnabled = !blockingEnabled;
-        trayIcon!.Text = $"Mouse Guard ({(blockingEnabled ? "Blocking" : "Unblocked")})\nHotkey: {HotkeyToString(currentHotkey)}";
+        trayIcon!.Text = $"{Strings.TrayIconText} ({(blockingEnabled ? "Blocking" : "Unblocked")})\nHotkey: {HotkeyToString(currentHotkey)}";
     }
 
     /// <summary>
@@ -261,10 +330,11 @@ class Program
                 SetCursorPos(safeX, safeY);
                 ShowCursor(false);
 
+                // Notification usage
                 if (!hasShownBlockNotification)
                 {
                     silentNotification?.Close();
-                    silentNotification = new SilentNotification("Mouse Blocked", "The mouse was blocked from entering the selected screen.");
+                    silentNotification = new SilentNotification(Strings.NotificationTitle, Strings.NotificationMessage);
                     silentNotification.ShowNearTray();
                     hasShownBlockNotification = true;
                 }
@@ -400,7 +470,7 @@ class Program
         private Label lbl;
         public HotkeyDialog(Keys initial)
         {
-            Text = "Select Hotkey";
+            Text = Strings.HotkeyDialogTitle;
             Width = 300; Height = 120;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterScreen;
@@ -427,7 +497,7 @@ class Program
         }
         private void UpdateLabel()
         {
-            lbl.Text = "Press new hotkey (Esc=Cancel, Enter=OK):\n" + HotkeyToString(SelectedHotkey);
+            lbl.Text = Strings.HotkeyDialogPrompt(HotkeyToString(SelectedHotkey));
         }
     }
 

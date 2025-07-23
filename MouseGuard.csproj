@@ -13,4 +13,18 @@
     <PackageReference Include="System.Management" Version="9.0.7" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="MouseGuard.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <PropertyGroup>
+    <ApplicationIcon>MouseGuard.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Version>1.0.2</Version>
+    <AppName>MouseGuard</AppName>
+  </PropertyGroup>
+
 </Project>

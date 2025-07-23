@@ -66,7 +66,7 @@ You can build MouseGuard using Visual Studio or the .NET CLI.
 - [ ] Update tray menu dynamically if monitors are added/removed
 - [ ] Improve error reporting and logging
 - [ ] Add accessibility features
-- [ ] Add localization/multi-language support
+- [x] Add localization/multi-language support
 
 ## License
 

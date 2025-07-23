@@ -1,0 +1,44 @@
+name: Build and Release on Merge to Master
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release
+
+      - name: Extract App Name and Version from .csproj
+        id: extract_metadata
+        run: |
+          APP_NAME=$(grep -oPm1 "(?<=<AppName>)[^<]+" MouseGuard.csproj)
+          VERSION=$(grep -oPm1 "(?<=<Version>)[^<]+" MouseGuard.csproj)
+          echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      # Create a GitHub Release
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.sha }}
+          name: ${{ env.APP_NAME }} v${{ env.VERSION }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
