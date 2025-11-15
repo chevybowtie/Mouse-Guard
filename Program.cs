@@ -50,6 +50,7 @@ class Program
     class AppSettings
     {
         public int BlockedScreenIndex { get; set; } = InvalidScreenIndex;
+        public string? BlockedDeviceName { get; set; } // e.g. "\\.\DISPLAY1"
         public string? Hotkey { get; set; } // e.g. "Control,Alt,B"
     }
 
@@ -70,6 +71,14 @@ class Program
                 if (TryParseHotkey(settings.Hotkey, out var k))
                     currentHotkey = k;
             }
+            
+            // Migrate old settings: if we have an index but no DeviceName, convert it
+            if (settings.BlockedScreenIndex >= 0 && settings.BlockedScreenIndex < Screen.AllScreens.Length
+                && string.IsNullOrEmpty(settings.BlockedDeviceName))
+            {
+                settings.BlockedDeviceName = Screen.AllScreens[settings.BlockedScreenIndex].DeviceName;
+            }
+            
             return settings;
         }
         catch
@@ -86,10 +95,30 @@ class Program
         var settings = new AppSettings
         {
             BlockedScreenIndex = blockedScreenIndex ?? InvalidScreenIndex,
+            BlockedDeviceName = blockedScreenIndex != null && blockedScreenIndex < Screen.AllScreens.Length 
+                ? Screen.AllScreens[(int)blockedScreenIndex].DeviceName 
+                : null,
             Hotkey = HotkeyToString(currentHotkey)
         };
         string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(settingsFile, json);
+    }
+
+    /// <summary>
+    /// Finds the screen index by DeviceName. Returns null if not found.
+    /// </summary>
+    static int? FindScreenIndexByDeviceName(string? deviceName)
+    {
+        if (string.IsNullOrEmpty(deviceName))
+            return null;
+
+        var screens = Screen.AllScreens;
+        for (int i = 0; i < screens.Length; i++)
+        {
+            if (screens[i].DeviceName == deviceName)
+                return i;
+        }
+        return null;
     }
 
     /// <summary>
@@ -103,10 +132,21 @@ class Program
 
         // Load settings and set blocked screen if valid
         var settings = LoadSettings();
-        if (settings.BlockedScreenIndex >= 0 && settings.BlockedScreenIndex < Screen.AllScreens.Length)
+        
+        // Prefer DeviceName over index for better reliability
+        if (!string.IsNullOrEmpty(settings.BlockedDeviceName))
+        {
+            blockedScreenIndex = FindScreenIndexByDeviceName(settings.BlockedDeviceName);
+        }
+        else if (settings.BlockedScreenIndex >= 0 && settings.BlockedScreenIndex < Screen.AllScreens.Length)
+        {
+            // Fallback to index for backward compatibility
             blockedScreenIndex = settings.BlockedScreenIndex;
+        }
         else
+        {
             blockedScreenIndex = null;
+        }
 
         // Tray icon initialization
         trayIcon = new NotifyIcon
