@@ -36,6 +36,8 @@ class Program
     static int? blockedScreenIndex = null;
     // Monitor manager for handling single/multi-monitor detection
     static MonitorManager? monitorManager;
+    // Loaded icon resource for proper disposal
+    static Icon? loadedIcon = null;
 
     // Hotkey constants
     private const int WM_HOTKEY = 0x0312;
@@ -85,6 +87,33 @@ class Program
     }
 
     /// <summary>
+    /// Loads the tray icon from file or falls back to a system icon.
+    /// </summary>
+    static Icon LoadTrayIcon()
+    {
+        try
+        {
+            // Try to load custom icon from file
+            if (File.Exists("MouseGuard.ico"))
+            {
+                loadedIcon = new Icon("MouseGuard.ico");
+                return loadedIcon;
+            }
+            else
+            {
+                SettingsManager.LogError("MouseGuard.ico not found, falling back to system icon");
+            }
+        }
+        catch (Exception ex)
+        {
+            SettingsManager.LogError("Failed to load MouseGuard.ico, falling back to system icon", ex);
+        }
+
+        // Fallback to system application icon
+        return SystemIcons.Application;
+    }
+
+    /// <summary>
     /// Application entry point.
     /// </summary>
     [STAThread]
@@ -119,7 +148,7 @@ class Program
         // Tray icon initialization
         trayIcon = new NotifyIcon
         {
-            Icon = new Icon("MouseGuard.ico"),
+            Icon = LoadTrayIcon(),
             Text = Strings.TrayIconText,
             Visible = true,
             ContextMenuStrip = BuildContextMenu()
@@ -445,11 +474,43 @@ class Program
     /// </summary>
     static void Exit()
     {
+        // Unregister hotkey
         UnregisterHotkey();
-        monitorTimer?.Stop();
-        monitorCountTimer?.Stop();
+        
+        // Stop and dispose timers
+        if (monitorTimer != null)
+        {
+            monitorTimer.Stop();
+            monitorTimer.Dispose();
+        }
+        
+        if (monitorCountTimer != null)
+        {
+            monitorCountTimer.Stop();
+            monitorCountTimer.Dispose();
+        }
+        
+        // Close any open notification
+        if (silentNotification != null)
+        {
+            silentNotification.Close();
+            silentNotification = null;
+        }
+        
+        // Dispose tray icon
         if (trayIcon != null)
+        {
             trayIcon.Visible = false;
+            trayIcon.Dispose();
+        }
+        
+        // Dispose loaded icon if it was loaded from file
+        if (loadedIcon != null)
+        {
+            loadedIcon.Dispose();
+            loadedIcon = null;
+        }
+        
         Application.Exit();
     }
 

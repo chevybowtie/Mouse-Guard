@@ -2,13 +2,13 @@
 # Todo
 
 * ✅ **IMPLEMENTED**: Move settings to LocalAppData and ensure directory exists. Settings now stored in `%LOCALAPPDATA%\Mouse-Guard\settings.json` with automatic migration from old location on first run.
-* Add icon fallback and dispose file-loaded icon on exit.
+* ✅ **IMPLEMENTED**: store monitor DeviceName (or EDID) instead of screen index so user selection survives monitor reordering
+* ✅ **IMPLEMENTED**: If a user only has one monitor connected/detected, the program now shows a warning and disables blocking functionality. The application dynamically detects monitor count changes and re-enables functionality when a second monitor is connected.
+* ✅ **IMPLEMENTED**: Add icon fallback and dispose file-loaded icon on exit. Icon loading now falls back to system Application icon if MouseGuard.ico is missing or fails to load, and all resources (icon, trayIcon, timers, notifications) are properly disposed on exit.
 * Validate parsed hotkey has a key code before accepting.
 * Check RegisterHotKey result and reflect failure (disable hotkey or notify).
 * Dispose trayIcon and monitorTimer and close silentNotification on Exit.
 * Avoid swallowing exceptions — log to a simple file or at least debug output.
-* ✅ **IMPLEMENTED**: store monitor DeviceName (or EDID) instead of screen index so user selection survives monitor reordering
 * Replace broad catch { } with logging to a file in LocalAppData for later diagnostics.
 * Move heavy operations (ManagementObjectSearcher) off the UI thread or cache results.
 * Add explicit unit tests for hotkey parsing and settings read/write, and add a small logging mechanism to capture runtime failures.
-* ✅ **IMPLEMENTED**: If a user only has one monitor connected/detected, the program now shows a warning and disables blocking functionality. The application dynamically detects monitor count changes and re-enables functionality when a second monitor is connected.
