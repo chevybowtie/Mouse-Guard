@@ -7,7 +7,8 @@
 * Check RegisterHotKey result and reflect failure (disable hotkey or notify).
 * Dispose trayIcon and monitorTimer and close silentNotification on Exit.
 * Avoid swallowing exceptions — log to a simple file or at least debug output.
-* storing monitor DeviceName (or EDID) instead of screen index so user selection survives monitor reordering
+* ✅ **IMPLEMENTED**: store monitor DeviceName (or EDID) instead of screen index so user selection survives monitor reordering
 * Replace broad catch { } with logging to a file in LocalAppData for later diagnostics.
 * Move heavy operations (ManagementObjectSearcher) off the UI thread or cache results.
 * Add explicit unit tests for hotkey parsing and settings read/write, and add a small logging mechanism to capture runtime failures.
+* If a user only has one monitor connected/detected, then this program really shouldn't do anything except warn that more than one monitor is required to guard one
