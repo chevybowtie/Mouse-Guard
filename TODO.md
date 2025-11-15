@@ -1,7 +1,7 @@
 
 # Todo
 
-* Move settings to LocalAppData and ensure directory exists.
+* ✅ **IMPLEMENTED**: Move settings to LocalAppData and ensure directory exists. Settings now stored in `%LOCALAPPDATA%\Mouse-Guard\settings.json` with automatic migration from old location on first run.
 * Add icon fallback and dispose file-loaded icon on exit.
 * Validate parsed hotkey has a key code before accepting.
 * Check RegisterHotKey result and reflect failure (disable hotkey or notify).
