@@ -11,4 +11,4 @@
 * Replace broad catch { } with logging to a file in LocalAppData for later diagnostics.
 * Move heavy operations (ManagementObjectSearcher) off the UI thread or cache results.
 * Add explicit unit tests for hotkey parsing and settings read/write, and add a small logging mechanism to capture runtime failures.
-* If a user only has one monitor connected/detected, then this program really shouldn't do anything except warn that more than one monitor is required to guard one
+* ✅ **IMPLEMENTED**: If a user only has one monitor connected/detected, the program now shows a warning and disables blocking functionality. The application dynamically detects monitor count changes and re-enables functionality when a second monitor is connected.

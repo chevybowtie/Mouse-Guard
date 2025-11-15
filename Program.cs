@@ -11,6 +11,8 @@ class Program
 {
     // Mouse check interval in milliseconds
     private const int TimerIntervalMs = 20;
+    // Monitor count check interval in milliseconds
+    private const int MonitorCheckIntervalMs = 5000;
     // Default/invalid screen index
     private const int InvalidScreenIndex = -1;
     // Notification display duration in milliseconds
@@ -28,8 +30,12 @@ class Program
     static NotifyIcon? trayIcon;
     // Timer for monitoring mouse position
     static System.Windows.Forms.Timer? monitorTimer;
+    // Timer for checking monitor count changes
+    static System.Windows.Forms.Timer? monitorCountTimer;
     // Index of the blocked screen (null if none)
     static int? blockedScreenIndex = null;
+    // Monitor manager for handling single/multi-monitor detection
+    static MonitorManager? monitorManager;
 
     // Hotkey constants
     private const int WM_HOTKEY = 0x0312;
@@ -97,6 +103,19 @@ class Program
         else
             blockedScreenIndex = null;
 
+        // Initialize monitor manager
+        monitorManager = new MonitorManager(new WindowsFormsScreenProvider());
+        
+        // Set up event handlers for monitor count changes
+        monitorManager.TransitionedToSingleMonitor += OnTransitionedToSingleMonitor;
+        monitorManager.TransitionedToMultiMonitor += OnTransitionedToMultiMonitor;
+
+        // Check for single monitor mode and show warning if needed
+        if (monitorManager.IsSingleMonitorMode)
+        {
+            ShowSingleMonitorWarning();
+        }
+
         // Tray icon initialization
         trayIcon = new NotifyIcon
         {
@@ -114,6 +133,14 @@ class Program
         monitorTimer.Tick += MonitorMouse;
         monitorTimer.Start();
 
+        // Start monitoring monitor count changes only if in single-monitor mode
+        monitorCountTimer = new System.Windows.Forms.Timer { Interval = MonitorCheckIntervalMs };
+        monitorCountTimer.Tick += CheckMonitorCount;
+        if (monitorManager.IsSingleMonitorMode)
+        {
+            monitorCountTimer.Start();
+        }
+
         // Message loop for hotkey
         Application.AddMessageFilter(new HotkeyMessageFilter(OnHotkeyPressed));
 
@@ -129,6 +156,17 @@ class Program
     static ContextMenuStrip BuildContextMenu()
     {
         var menu = new ContextMenuStrip();
+
+        // If in single-monitor mode, show a disabled info item
+        if (monitorManager != null && monitorManager.IsSingleMonitorMode)
+        {
+            var infoItem = new ToolStripMenuItem(Strings.SingleMonitorModeMenuLabel)
+            {
+                Enabled = false
+            };
+            menu.Items.Add(infoItem);
+            menu.Items.Add(new ToolStripSeparator());
+        }
 
         var screens = Screen.AllScreens;
         for (int i = 0; i < screens.Length; i++)
@@ -283,6 +321,14 @@ class Program
     /// </summary>
     static void MonitorMouse(object? sender, EventArgs e)
     {
+        // If in single-monitor mode, don't do anything
+        if (monitorManager != null && monitorManager.IsSingleMonitorMode)
+        {
+            ShowCursor(true);
+            hasShownBlockNotification = false;
+            return;
+        }
+
         if (!blockingEnabled)
         {
             ShowCursor(true);
@@ -296,6 +342,12 @@ class Program
         // If no screen is blocked, do nothing
         if (blockedScreenIndex == null || blockedScreenIndex >= Screen.AllScreens.Length)
         {
+            // If blockedScreenIndex was valid but now out of bounds, monitors may have changed
+            if (blockedScreenIndex != null && blockedScreenIndex >= Screen.AllScreens.Length)
+            {
+                // Trigger monitor count check
+                CheckMonitorCount(null, EventArgs.Empty);
+            }
             hasShownBlockNotification = false;
             // Do not close notification here
             // silentNotification?.Close();
@@ -341,12 +393,61 @@ class Program
     }
 
     /// <summary>
+    /// Shows a warning dialog when only one monitor is detected.
+    /// </summary>
+    static void ShowSingleMonitorWarning()
+    {
+        MessageBox.Show(
+            Strings.SingleMonitorWarningMessage,
+            Strings.SingleMonitorWarningTitle,
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning);
+    }
+
+    /// <summary>
+    /// Timer tick handler that checks for monitor count changes.
+    /// </summary>
+    static void CheckMonitorCount(object? sender, EventArgs e)
+    {
+        monitorManager?.CheckForMonitorCountChange();
+    }
+
+    /// <summary>
+    /// Event handler for when the system transitions to single-monitor mode.
+    /// </summary>
+    static void OnTransitionedToSingleMonitor(object? sender, EventArgs e)
+    {
+        ShowSingleMonitorWarning();
+        // Clear blocked screen since we can't block with only one monitor
+        blockedScreenIndex = null;
+        SaveSettings();
+        // Rebuild menu to reflect the change
+        if (trayIcon != null)
+            trayIcon.ContextMenuStrip = BuildContextMenu();
+        // Start the monitor count timer to detect when a second monitor is added
+        monitorCountTimer?.Start();
+    }
+
+    /// <summary>
+    /// Event handler for when the system transitions to multi-monitor mode.
+    /// </summary>
+    static void OnTransitionedToMultiMonitor(object? sender, EventArgs e)
+    {
+        // Rebuild menu to show available screens
+        if (trayIcon != null)
+            trayIcon.ContextMenuStrip = BuildContextMenu();
+        // Stop the monitor count timer since we don't need it in multi-monitor mode
+        monitorCountTimer?.Stop();
+    }
+
+    /// <summary>
     /// Cleanly exits the application.
     /// </summary>
     static void Exit()
     {
         UnregisterHotkey();
         monitorTimer?.Stop();
+        monitorCountTimer?.Stop();
         if (trayIcon != null)
             trayIcon.Visible = false;
         Application.Exit();

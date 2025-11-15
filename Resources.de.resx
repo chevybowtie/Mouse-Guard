@@ -39,4 +39,13 @@
   <data name="NotificationMessage" xml:space="preserve">
     <value>Die Maus wurde daran gehindert, den ausgewählten Bildschirm zu betreten.</value>
   </data>
+  <data name="SingleMonitorWarningTitle" xml:space="preserve">
+    <value>Mehrere Monitore erforderlich</value>
+  </data>
+  <data name="SingleMonitorWarningMessage" xml:space="preserve">
+    <value>Mouse Guard benötigt mindestens 2 Monitore, um ordnungsgemäß zu funktionieren. Derzeit ist nur 1 Monitor erkannt.\n\nDie Anwendung wird in der Taskleiste ausgeführt, aber die Sperrfunktion ist deaktiviert, bis ein zweiter Monitor angeschlossen ist.</value>
+  </data>
+  <data name="SingleMonitorModeMenuLabel" xml:space="preserve">
+    <value>Ein Monitor erkannt - Sperrung deaktiviert</value>
+  </data>
 </root>

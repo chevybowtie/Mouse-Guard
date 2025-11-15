@@ -39,4 +39,13 @@
   <data name="NotificationMessage" xml:space="preserve">
     <value>El ratón fue bloqueado para entrar en la pantalla seleccionada.</value>
   </data>
+  <data name="SingleMonitorWarningTitle" xml:space="preserve">
+    <value>Se requieren múltiples monitores</value>
+  </data>
+  <data name="SingleMonitorWarningMessage" xml:space="preserve">
+    <value>Mouse Guard requiere al menos 2 monitores para funcionar correctamente. Actualmente solo se detecta 1 monitor.\n\nLa aplicación se ejecutará en la bandeja del sistema, pero la funcionalidad de bloqueo está deshabilitada hasta que se conecte un segundo monitor.</value>
+  </data>
+  <data name="SingleMonitorModeMenuLabel" xml:space="preserve">
+    <value>Monitor único detectado - bloqueo deshabilitado</value>
+  </data>
 </root>
