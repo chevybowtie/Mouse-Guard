@@ -132,6 +132,136 @@ public class SettingsManagerTests
         }
     }
 
+    [Fact]
+    public void SaveSettings_IsAtomic_NoPartialWrites()
+    {
+        // Arrange
+        var testSettings = new TestSettings { Value = "atomic-test-value" };
+
+        // Act
+        SettingsManager.SaveSettings(testSettings);
+
+        // Assert - File should exist and be complete (not partial)
+        Assert.True(File.Exists(SettingsManager.SettingsFilePath));
+        
+        // Verify we can read it back successfully (would fail if partial write)
+        var loadedSettings = SettingsManager.LoadSettings<TestSettings>();
+        Assert.NotNull(loadedSettings);
+        Assert.Equal(testSettings.Value, loadedSettings.Value);
+        
+        // Verify no temp file is left behind
+        Assert.False(File.Exists(SettingsManager.SettingsFilePath + ".tmp"));
+    }
+
+    [Fact]
+    public void MigrateOldSettings_ValidatesJson_DeletesInvalidFile()
+    {
+        // Arrange - Clean up existing files
+        if (File.Exists(SettingsManager.SettingsFilePath))
+        {
+            File.Delete(SettingsManager.SettingsFilePath);
+        }
+
+        // Create an invalid JSON file in old location
+        var oldPath = SettingsManager.OldSettingsPath;
+        File.WriteAllText(oldPath, "{ invalid json ]");
+
+        try
+        {
+            // Act
+            SettingsManager.MigrateOldSettings();
+
+            // Assert - Migration should detect invalid JSON and delete it
+            Assert.False(File.Exists(SettingsManager.SettingsFilePath), 
+                "Invalid migrated file should be deleted");
+        }
+        finally
+        {
+            // Cleanup
+            if (File.Exists(oldPath))
+            {
+                File.Delete(oldPath);
+            }
+        }
+    }
+
+    [Fact]
+    public void MigrateOldSettings_ValidatesJson_KeepsValidFile()
+    {
+        // Arrange - Clean up existing files
+        if (File.Exists(SettingsManager.SettingsFilePath))
+        {
+            File.Delete(SettingsManager.SettingsFilePath);
+        }
+
+        // Create a valid JSON file in old location
+        var oldPath = SettingsManager.OldSettingsPath;
+        var testSettings = new TestSettings { Value = "valid-migrated" };
+        var validJson = System.Text.Json.JsonSerializer.Serialize(testSettings);
+        File.WriteAllText(oldPath, validJson);
+
+        try
+        {
+            // Act
+            SettingsManager.MigrateOldSettings();
+
+            // Assert - Valid file should be kept
+            Assert.True(File.Exists(SettingsManager.SettingsFilePath), 
+                "Valid migrated file should exist");
+            
+            var loadedSettings = SettingsManager.LoadSettings<TestSettings>();
+            Assert.Equal(testSettings.Value, loadedSettings.Value);
+        }
+        finally
+        {
+            // Cleanup
+            if (File.Exists(oldPath))
+            {
+                File.Delete(oldPath);
+            }
+        }
+    }
+
+    [Fact]
+    public void ConcurrentAccess_MultipleThreads_NoCorruption()
+    {
+        // Arrange
+        var tasks = new List<Task>();
+        var iterations = 10;
+
+        // Act - Multiple threads writing and reading concurrently
+        for (int i = 0; i < 5; i++)
+        {
+            var threadId = i;
+            tasks.Add(Task.Run(() =>
+            {
+                for (int j = 0; j < iterations; j++)
+                {
+                    var settings = new TestSettings { Value = $"thread-{threadId}-iteration-{j}" };
+                    SettingsManager.SaveSettings(settings);
+                    var loaded = SettingsManager.LoadSettings<TestSettings>();
+                    Assert.NotNull(loaded);
+                }
+            }));
+        }
+
+        Task.WaitAll(tasks.ToArray());
+
+        // Assert - Final read should succeed (no corruption)
+        var finalSettings = SettingsManager.LoadSettings<TestSettings>();
+        Assert.NotNull(finalSettings);
+        Assert.NotNull(finalSettings.Value);
+    }
+
+    [Fact]
+    public void EnsureLocalAppDataDirectoryExists_WithErrorHandling_DoesNotThrow()
+    {
+        // Act & Assert - Should not throw even if there are issues
+        // (In normal circumstances it will create the directory)
+        var exception = Record.Exception(() => SettingsManager.EnsureLocalAppDataDirectoryExists());
+        Assert.Null(exception);
+    }
+
     // Helper class for testing
     private class TestSettings
     {
