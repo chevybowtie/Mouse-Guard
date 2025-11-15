@@ -47,7 +47,7 @@ public static class SettingsManager
         }
         catch (Exception ex)
         {
-            LogError($"Failed to load settings: {ex.Message}");
+            Log($"Failed to load settings: {ex.Message}");
             return new T();
         }
     }
@@ -67,7 +67,7 @@ public static class SettingsManager
         }
         catch (Exception ex)
         {
-            LogError($"Failed to save settings: {ex.Message}");
+            Log($"Failed to save settings: {ex.Message}");
         }
     }
 
@@ -94,18 +94,18 @@ public static class SettingsManager
             // Copy the legacy settings file to new location
             File.Copy(LegacySettingsPath, SettingsFilePath, overwrite: false);
             
-            LogError($"Settings migrated from {LegacySettingsPath} to {SettingsFilePath}");
+            Log($"Settings migrated from {LegacySettingsPath} to {SettingsFilePath}");
         }
         catch (Exception ex)
         {
-            LogError($"Failed to migrate settings: {ex.Message}");
+            Log($"Failed to migrate settings: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// Logs errors to error.log in LocalAppData.
+    /// Logs messages to error.log in LocalAppData.
     /// </summary>
-    private static void LogError(string message)
+    private static void Log(string message)
     {
         try
         {
