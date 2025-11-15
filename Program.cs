@@ -30,8 +30,6 @@ class Program
     static System.Windows.Forms.Timer? monitorTimer;
     // Index of the blocked screen (null if none)
     static int? blockedScreenIndex = null;
-    // Path to settings file
-    static string settingsFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
 
     // Hotkey constants
     private const int WM_HOTKEY = 0x0312;
@@ -58,24 +56,13 @@ class Program
     /// </summary>
     static AppSettings LoadSettings()
     {
-        if (!File.Exists(settingsFile))
-            return new AppSettings();
-
-        try
+        var settings = SettingsManager.LoadSettings<AppSettings>() ?? new AppSettings();
+        if (!string.IsNullOrEmpty(settings.Hotkey))
         {
-            string json = File.ReadAllText(settingsFile);
-            var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
-            if (!string.IsNullOrEmpty(settings.Hotkey))
-            {
-                if (TryParseHotkey(settings.Hotkey, out var k))
-                    currentHotkey = k;
-            }
-            return settings;
+            if (TryParseHotkey(settings.Hotkey, out var k))
+                currentHotkey = k;
         }
-        catch
-        {
-            return new AppSettings();
-        }
+        return settings;
     }
 
     /// <summary>
@@ -88,8 +75,7 @@ class Program
             BlockedScreenIndex = blockedScreenIndex ?? InvalidScreenIndex,
             Hotkey = HotkeyToString(currentHotkey)
         };
-        string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(settingsFile, json);
+        SettingsManager.SaveSettings(settings);
     }
 
     /// <summary>
@@ -100,6 +86,9 @@ class Program
     {
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
+
+        // Migrate old settings from app directory if needed
+        SettingsManager.MigrateOldSettings();
 
         // Load settings and set blocked screen if valid
         var settings = LoadSettings();
