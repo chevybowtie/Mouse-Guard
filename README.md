@@ -63,10 +63,29 @@ You can build MouseGuard using Visual Studio or the .NET CLI.
 
 ## TODO
 
-- [ ] Update tray menu dynamically if monitors are added/removed
+### Implemented
+
+- [x] Add localization/multi-language support
+- [x] Move settings to LocalAppData and ensure directory exists. Settings now stored in `%LOCALAPPDATA%\\Mouse-Guard\\settings.json` with automatic migration from old location on first run.
+- [x] Store monitor DeviceName (or EDID) instead of screen index so user selection survives monitor reordering
+- [x] If a user only has one monitor connected/detected, show a warning and disable blocking functionality; dynamically detect monitor count changes and re-enable functionality when a second monitor is connected.
+- [x] Add icon fallback and dispose file-loaded icon on exit; ensure resources (`icon`, `trayIcon`, `timers`, `notifications`) are properly disposed on exit.
+
+### Pending
+
+- [ ] Only allow one copy to run at a time
 - [ ] Improve error reporting and logging
 - [ ] Add accessibility features
-- [x] Add localization/multi-language support
+- [ ] Validate parsed hotkey has a key code before accepting
+- [ ] Check `RegisterHotKey` result and reflect failure (disable hotkey or notify)
+- [ ] Dispose `trayIcon` and `monitorTimer` and close `silentNotification` on Exit
+- [ ] Avoid swallowing exceptions — log to a simple file or at least debug output
+- [ ] Replace broad `catch { }` with logging to a file in LocalAppData for later diagnostics
+- [ ] Move heavy operations (ManagementObjectSearcher) off the UI thread or cache results
+
+### Testing
+
+- [ ] Add explicit unit tests for hotkey parsing and settings read/write, and add a small logging mechanism to capture runtime failures
 
 ## License
 
