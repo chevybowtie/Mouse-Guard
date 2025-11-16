@@ -51,4 +51,10 @@ The application will run in the system tray but blocking functionality is disabl
   <data name="SingleMonitorModeMenuLabel" xml:space="preserve">
     <value>Single monitor detected - blocking disabled</value>
   </data>
+  <data name="SingleInstanceWarningTitle" xml:space="preserve">
+    <value>Already running</value>
+  </data>
+  <data name="SingleInstanceWarningMessage" xml:space="preserve">
+    <value>Mouse Guard is already running. Only one instance is allowed.</value>
+  </data>
 </root>
