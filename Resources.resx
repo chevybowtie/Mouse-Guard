@@ -31,12 +31,24 @@
     <value>Select Hotkey</value>
   </data>
   <data name="HotkeyDialogPrompt" xml:space="preserve">
-    <value>Press new hotkey (Esc=Cancel, Enter=OK):\n{0}</value>
+    <value>Press new hotkey (Esc=Cancel, Enter=OK):
+{0}</value>
   </data>
   <data name="NotificationTitle" xml:space="preserve">
     <value>Mouse Blocked</value>
   </data>
   <data name="NotificationMessage" xml:space="preserve">
     <value>The mouse was blocked from entering the selected screen.</value>
+  </data>
+  <data name="SingleMonitorWarningTitle" xml:space="preserve">
+    <value>Multiple Monitors Required</value>
+  </data>
+  <data name="SingleMonitorWarningMessage" xml:space="preserve">
+    <value>Mouse Guard requires at least 2 monitors to function properly. Currently only 1 monitor is detected.
+
+The application will run in the system tray but blocking functionality is disabled until a second monitor is connected.</value>
+  </data>
+  <data name="SingleMonitorModeMenuLabel" xml:space="preserve">
+    <value>Single monitor detected - blocking disabled</value>
   </data>
 </root>

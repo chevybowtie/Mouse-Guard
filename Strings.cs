@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 using System.Resources;
 
@@ -14,8 +15,13 @@ namespace MouseGuard
         public static string Exit => RM.GetString("Exit", CultureInfo.CurrentUICulture) ?? "Exit";
         public static string HotkeyDialogTitle => RM.GetString("HotkeyDialogTitle", CultureInfo.CurrentUICulture) ?? "Select Hotkey";
         public static string HotkeyDialogPrompt(string hotkey) =>
-            string.Format(RM.GetString("HotkeyDialogPrompt", CultureInfo.CurrentUICulture) ?? "Press new hotkey (Esc=Cancel, Enter=OK):\n{0}", hotkey);
+            string.Format(RM.GetString("HotkeyDialogPrompt", CultureInfo.CurrentUICulture) ?? ("Press new hotkey (Esc=Cancel, Enter=OK):" + Environment.NewLine + "{0}"), hotkey);
         public static string NotificationTitle => RM.GetString("NotificationTitle", CultureInfo.CurrentUICulture) ?? "Mouse Blocked";
         public static string NotificationMessage => RM.GetString("NotificationMessage", CultureInfo.CurrentUICulture) ?? "The mouse was blocked from entering the selected screen.";
+        public static string SingleMonitorWarningTitle => RM.GetString("SingleMonitorWarningTitle", CultureInfo.CurrentUICulture) ?? "Multiple Monitors Required";
+        public static string SingleMonitorWarningMessage => RM.GetString("SingleMonitorWarningMessage", CultureInfo.CurrentUICulture) ??
+            ("Mouse Guard requires at least 2 monitors to function properly. Currently only 1 monitor is detected." + Environment.NewLine + Environment.NewLine +
+            "The application will run in the system tray but blocking functionality is disabled until a second monitor is connected.");
+        public static string SingleMonitorModeMenuLabel => RM.GetString("SingleMonitorModeMenuLabel", CultureInfo.CurrentUICulture) ?? "Single monitor detected - blocking disabled";
     }
 }

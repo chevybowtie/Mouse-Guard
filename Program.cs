@@ -11,6 +11,8 @@ class Program
 {
     // Mouse check interval in milliseconds
     private const int TimerIntervalMs = 20;
+    // Monitor count check interval in milliseconds
+    private const int MonitorCheckIntervalMs = 5000;
     // Default/invalid screen index
     private const int InvalidScreenIndex = -1;
     // Notification display duration in milliseconds
@@ -28,10 +30,14 @@ class Program
     static NotifyIcon? trayIcon;
     // Timer for monitoring mouse position
     static System.Windows.Forms.Timer? monitorTimer;
+    // Timer for checking monitor count changes
+    static System.Windows.Forms.Timer? monitorCountTimer;
     // Index of the blocked screen (null if none)
     static int? blockedScreenIndex = null;
-    // Path to settings file
-    static string settingsFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+    // Monitor manager for handling single/multi-monitor detection
+    static MonitorManager? monitorManager;
+    // Loaded icon resource for proper disposal
+    static Icon? loadedIcon = null;
 
     // Hotkey constants
     private const int WM_HOTKEY = 0x0312;
@@ -59,32 +65,23 @@ class Program
     /// </summary>
     static AppSettings LoadSettings()
     {
-        if (!File.Exists(settingsFile))
-            return new AppSettings();
+        var settings = SettingsManager.LoadSettings<AppSettings>() ?? new AppSettings();
 
-        try
+        // Parse hotkey if present
+        if (!string.IsNullOrEmpty(settings.Hotkey))
         {
-            string json = File.ReadAllText(settingsFile);
-            var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
-            if (!string.IsNullOrEmpty(settings.Hotkey))
-            {
-                if (TryParseHotkey(settings.Hotkey, out var k))
-                    currentHotkey = k;
-            }
-            
-            // Migrate old settings: if we have an index but no DeviceName, convert it
-            if (settings.BlockedScreenIndex >= 0 && settings.BlockedScreenIndex < Screen.AllScreens.Length
-                && string.IsNullOrEmpty(settings.BlockedDeviceName))
-            {
-                settings.BlockedDeviceName = Screen.AllScreens[settings.BlockedScreenIndex].DeviceName;
-            }
-            
-            return settings;
+            if (HotkeyUtil.TryParse(settings.Hotkey, out var k))
+                currentHotkey = k;
         }
-        catch
+
+        // Migrate old configuration: convert index to DeviceName for reliability if needed
+        if (settings.BlockedScreenIndex >= 0 && settings.BlockedScreenIndex < Screen.AllScreens.Length
+            && string.IsNullOrEmpty(settings.BlockedDeviceName))
         {
-            return new AppSettings();
+            settings.BlockedDeviceName = Screen.AllScreens[settings.BlockedScreenIndex].DeviceName;
         }
+
+        return settings;
     }
 
     /// <summary>
@@ -98,10 +95,36 @@ class Program
             BlockedDeviceName = blockedScreenIndex != null && blockedScreenIndex < Screen.AllScreens.Length 
                 ? Screen.AllScreens[(int)blockedScreenIndex].DeviceName 
                 : null,
-            Hotkey = HotkeyToString(currentHotkey)
+            Hotkey = HotkeyUtil.ToString(currentHotkey)
         };
-        string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(settingsFile, json);
+        SettingsManager.SaveSettings(settings);
+    }
+
+    /// <summary>
+    /// Loads the tray icon from file or falls back to a system icon.
+    /// </summary>
+    static Icon LoadTrayIcon()
+    {
+        try
+        {
+            // Try to load custom icon from file
+            if (File.Exists("MouseGuard.ico"))
+            {
+                loadedIcon = new Icon("MouseGuard.ico");
+                return loadedIcon;
+            }
+            else
+            {
+                SettingsManager.LogError("MouseGuard.ico not found, falling back to system icon");
+            }
+        }
+        catch (Exception ex)
+        {
+            SettingsManager.LogError("Failed to load MouseGuard.ico, falling back to system icon", ex);
+        }
+
+        // Fallback to system application icon
+        return SystemIcons.Application;
     }
 
     /// <summary>
@@ -130,6 +153,9 @@ class Program
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
 
+        // Migrate old settings from app directory if needed
+        SettingsManager.MigrateOldSettings();
+
         // Load settings and set blocked screen if valid
         var settings = LoadSettings();
         
@@ -148,10 +174,23 @@ class Program
             blockedScreenIndex = null;
         }
 
+        // Initialize monitor manager
+        monitorManager = new MonitorManager(new WindowsFormsScreenProvider());
+        
+        // Set up event handlers for monitor count changes
+        monitorManager.TransitionedToSingleMonitor += OnTransitionedToSingleMonitor;
+        monitorManager.TransitionedToMultiMonitor += OnTransitionedToMultiMonitor;
+
+        // Check for single monitor mode and show warning if needed
+        if (monitorManager.IsSingleMonitorMode)
+        {
+            ShowSingleMonitorWarning();
+        }
+
         // Tray icon initialization
         trayIcon = new NotifyIcon
         {
-            Icon = new Icon("MouseGuard.ico"),
+            Icon = LoadTrayIcon(),
             Text = Strings.TrayIconText,
             Visible = true,
             ContextMenuStrip = BuildContextMenu()
@@ -164,6 +203,14 @@ class Program
         monitorTimer = new System.Windows.Forms.Timer { Interval = TimerIntervalMs };
         monitorTimer.Tick += MonitorMouse;
         monitorTimer.Start();
+
+        // Start monitoring monitor count changes only if in single-monitor mode
+        monitorCountTimer = new System.Windows.Forms.Timer { Interval = MonitorCheckIntervalMs };
+        monitorCountTimer.Tick += CheckMonitorCount;
+        if (monitorManager.IsSingleMonitorMode)
+        {
+            monitorCountTimer.Start();
+        }
 
         // Message loop for hotkey
         Application.AddMessageFilter(new HotkeyMessageFilter(OnHotkeyPressed));
@@ -181,6 +228,17 @@ class Program
     {
         var menu = new ContextMenuStrip();
 
+        // If in single-monitor mode, show a disabled info item
+        if (monitorManager != null && monitorManager.IsSingleMonitorMode)
+        {
+            var infoItem = new ToolStripMenuItem(Strings.SingleMonitorModeMenuLabel)
+            {
+                Enabled = false
+            };
+            menu.Items.Add(infoItem);
+            menu.Items.Add(new ToolStripSeparator());
+        }
+
         var screens = Screen.AllScreens;
         for (int i = 0; i < screens.Length; i++)
         {
@@ -197,8 +255,16 @@ class Program
                 Strings.BlockScreenMenu(i + 1, screen.Primary ? Strings.Primary : "", displayName, screen.Bounds.Width, screen.Bounds.Height))
             {
                 CheckOnClick = true,
-                Checked = blockedScreenIndex == index
+                Checked = blockedScreenIndex == index,
+                // Disable selecting screens when in single-monitor mode
+                Enabled = !(monitorManager != null && monitorManager.IsSingleMonitorMode)
             };
+
+            if (monitorManager != null && monitorManager.IsSingleMonitorMode)
+            {
+                // Provide an explanatory tooltip for disabled items (if tooltips are supported)
+                item.ToolTipText = Strings.SingleMonitorModeMenuLabel;
+            }
 
             // Click handler for screen selection (toggle block/unblock)
             item.Click += (s, e) =>
@@ -318,7 +384,7 @@ class Program
                 currentHotkey = dlg.SelectedHotkey;
                 RegisterHotkey(currentHotkey);
                 SaveSettings();
-                trayIcon!.Text = $"{Strings.TrayIconText} ({(blockingEnabled ? "Blocking" : "Unblocked")})\nHotkey: {HotkeyToString(currentHotkey)}";
+                trayIcon!.Text = TrayTextFormatter.Format(Strings.TrayIconText, blockingEnabled, currentHotkey);
             }
         }
     }
@@ -326,7 +392,7 @@ class Program
     static void OnHotkeyPressed()
     {
         blockingEnabled = !blockingEnabled;
-        trayIcon!.Text = $"{Strings.TrayIconText} ({(blockingEnabled ? "Blocking" : "Unblocked")})\nHotkey: {HotkeyToString(currentHotkey)}";
+        trayIcon!.Text = TrayTextFormatter.Format(Strings.TrayIconText, blockingEnabled, currentHotkey);
     }
 
     /// <summary>
@@ -334,6 +400,14 @@ class Program
     /// </summary>
     static void MonitorMouse(object? sender, EventArgs e)
     {
+        // If in single-monitor mode, don't do anything
+        if (monitorManager != null && monitorManager.IsSingleMonitorMode)
+        {
+            ShowCursor(true);
+            hasShownBlockNotification = false;
+            return;
+        }
+
         if (!blockingEnabled)
         {
             ShowCursor(true);
@@ -347,6 +421,12 @@ class Program
         // If no screen is blocked, do nothing
         if (blockedScreenIndex == null || blockedScreenIndex >= Screen.AllScreens.Length)
         {
+            // If blockedScreenIndex was valid but now out of bounds, monitors may have changed
+            if (blockedScreenIndex != null && blockedScreenIndex >= Screen.AllScreens.Length)
+            {
+                // Trigger monitor count check
+                CheckMonitorCount(null, EventArgs.Empty);
+            }
             hasShownBlockNotification = false;
             // Do not close notification here
             // silentNotification?.Close();
@@ -392,14 +472,95 @@ class Program
     }
 
     /// <summary>
+    /// Shows a warning dialog when only one monitor is detected.
+    /// </summary>
+    static void ShowSingleMonitorWarning()
+    {
+        MessageBox.Show(
+            Strings.SingleMonitorWarningMessage,
+            Strings.SingleMonitorWarningTitle,
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning);
+    }
+
+    /// <summary>
+    /// Timer tick handler that checks for monitor count changes.
+    /// </summary>
+    static void CheckMonitorCount(object? sender, EventArgs e)
+    {
+        monitorManager?.CheckForMonitorCountChange();
+    }
+
+    /// <summary>
+    /// Event handler for when the system transitions to single-monitor mode.
+    /// </summary>
+    static void OnTransitionedToSingleMonitor(object? sender, EventArgs e)
+    {
+        ShowSingleMonitorWarning();
+        // Clear blocked screen since we can't block with only one monitor
+        blockedScreenIndex = null;
+        SaveSettings();
+        // Rebuild menu to reflect the change
+        if (trayIcon != null)
+            trayIcon.ContextMenuStrip = BuildContextMenu();
+        // Start the monitor count timer to detect when a second monitor is added
+        monitorCountTimer?.Start();
+    }
+
+    /// <summary>
+    /// Event handler for when the system transitions to multi-monitor mode.
+    /// </summary>
+    static void OnTransitionedToMultiMonitor(object? sender, EventArgs e)
+    {
+        // Rebuild menu to show available screens
+        if (trayIcon != null)
+            trayIcon.ContextMenuStrip = BuildContextMenu();
+        // Stop the monitor count timer since we don't need it in multi-monitor mode
+        monitorCountTimer?.Stop();
+    }
+
+    /// <summary>
     /// Cleanly exits the application.
     /// </summary>
     static void Exit()
     {
+        // Unregister hotkey
         UnregisterHotkey();
-        monitorTimer?.Stop();
+        
+        // Stop and dispose timers
+        if (monitorTimer != null)
+        {
+            monitorTimer.Stop();
+            monitorTimer.Dispose();
+        }
+        
+        if (monitorCountTimer != null)
+        {
+            monitorCountTimer.Stop();
+            monitorCountTimer.Dispose();
+        }
+        
+        // Close any open notification
+        if (silentNotification != null)
+        {
+            silentNotification.Close();
+            silentNotification = null;
+        }
+        
+        // Dispose tray icon
         if (trayIcon != null)
+        {
             trayIcon.Visible = false;
+            trayIcon.Dispose();
+        }
+        
+        // Dispose loaded icon if it was loaded from file
+        if (loadedIcon != null)
+        {
+            loadedIcon.Dispose();
+            loadedIcon = null;
+        }
+        
         Application.Exit();
     }
 
@@ -416,12 +577,11 @@ class Program
 
             foreach (ManagementObject mo in searcher.Get())
             {
-                // InstanceName contains the display device name, e.g., DISPLAY1
                 var instanceName = (string)mo["InstanceName"];
-                if (deviceName.Contains(instanceName.Split('\\').Last()))
+                if (DisplayUtil.DeviceNameContainsInstanceToken(deviceName, instanceName))
                 {
                     var nameArray = (ushort[])mo["UserFriendlyName"];
-                    var name = System.Text.Encoding.UTF8.GetString(nameArray.Select(b => (byte)b).ToArray());
+                    var name = DisplayUtil.UserFriendlyNameFromUShorts(nameArray);
                     return name;
                 }
             }
@@ -467,24 +627,12 @@ class Program
 
     private static string HotkeyToString(Keys keys)
     {
-        var parts = new List<string>();
-        if (keys.HasFlag(Keys.Control)) parts.Add("Control");
-        if (keys.HasFlag(Keys.Alt)) parts.Add("Alt");
-        if (keys.HasFlag(Keys.Shift)) parts.Add("Shift");
-        parts.Add((keys & Keys.KeyCode).ToString());
-        return string.Join(",", parts);
+        return HotkeyUtil.ToString(keys);
     }
 
     private static bool TryParseHotkey(string s, out Keys keys)
     {
-        keys = Keys.None;
-        var parts = s.Split(',');
-        foreach (var p in parts)
-        {
-            if (Enum.TryParse<Keys>(p, out var k))
-                keys |= k;
-        }
-        return keys != Keys.None;
+        return HotkeyUtil.TryParse(s, out keys);
     }
 
     // --- Message filter for hotkey ---
