@@ -38,6 +38,8 @@ class Program
     static MonitorManager? monitorManager;
     // Loaded icon resource for proper disposal
     static Icon? loadedIcon = null;
+    // Single instance guard
+    static SingleInstance? singleInstance = null;
 
     // Hotkey constants
     private const int WM_HOTKEY = 0x0312;
@@ -150,6 +152,23 @@ class Program
     [STAThread]
     static void Main()
     {
+        // Enforce single-instance: per-user mutex
+        try
+        {
+            var sanitizedUser = Environment.UserName?.Replace("\\", "_")?.Replace("/", "_") ?? "user";
+            var mutexName = $"MouseGuard_{sanitizedUser}";
+            singleInstance = new SingleInstance(mutexName);
+            if (!singleInstance.IsFirstInstance)
+            {
+                MessageBox.Show(Strings.SingleInstanceWarningMessage, Strings.SingleInstanceWarningTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+        }
+        catch
+        {
+            // If the single-instance check fails to initialize, proceed (do not block startup)
+        }
+
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
 
@@ -562,6 +581,10 @@ class Program
         }
         
         Application.Exit();
+
+        // Release the single-instance mutex
+        singleInstance?.Dispose();
+        singleInstance = null;
     }
 
     /// <summary>

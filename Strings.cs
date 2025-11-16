@@ -23,5 +23,7 @@ namespace MouseGuard
             ("Mouse Guard requires at least 2 monitors to function properly. Currently only 1 monitor is detected." + Environment.NewLine + Environment.NewLine +
             "The application will run in the system tray but blocking functionality is disabled until a second monitor is connected.");
         public static string SingleMonitorModeMenuLabel => RM.GetString("SingleMonitorModeMenuLabel", CultureInfo.CurrentUICulture) ?? "Single monitor detected - blocking disabled";
+        public static string SingleInstanceWarningTitle => RM.GetString("SingleInstanceWarningTitle", CultureInfo.CurrentUICulture) ?? "Already running";
+        public static string SingleInstanceWarningMessage => RM.GetString("SingleInstanceWarningMessage", CultureInfo.CurrentUICulture) ?? "Mouse Guard is already running. Only one instance is allowed.";
     }
 }
