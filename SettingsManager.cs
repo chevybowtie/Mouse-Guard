@@ -1,3 +1,4 @@
+using System;
 using System.Text.Json;
 
 namespace MouseGuard;
@@ -58,8 +59,8 @@ public static class SettingsManager
             EnsureLocalAppDataDirectoryExists();
             string logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}";
             if (ex != null)
-                logEntry += $"\n{ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}";
-            logEntry += "\n";
+                logEntry += Environment.NewLine + $"{ex.GetType().Name}: {ex.Message}" + Environment.NewLine + ex.StackTrace;
+            logEntry += Environment.NewLine;
             File.AppendAllText(ErrorLogPath, logEntry);
         }
         catch

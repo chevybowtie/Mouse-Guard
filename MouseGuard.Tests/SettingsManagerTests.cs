@@ -210,6 +210,7 @@ public class SettingsManagerTests
                 "Valid migrated file should exist");
             
             var loadedSettings = SettingsManager.LoadSettings<TestSettings>();
+            Assert.NotNull(loadedSettings);
             Assert.Equal(testSettings.Value, loadedSettings.Value);
         }
         finally
@@ -223,7 +224,7 @@ public class SettingsManagerTests
     }
 
     [Fact]
-    public void ConcurrentAccess_MultipleThreads_NoCorruption()
+    public async Task ConcurrentAccess_MultipleThreads_NoCorruption()
     {
         // Arrange
         var tasks = new List<Task>();
@@ -245,7 +246,7 @@ public class SettingsManagerTests
             }));
         }
 
-        Task.WaitAll(tasks.ToArray());
+        await Task.WhenAll(tasks.ToArray());
 
         // Assert - Final read should succeed (no corruption)
         var finalSettings = SettingsManager.LoadSettings<TestSettings>();

@@ -1,0 +1,33 @@
+name: dotnet
+
+on:
+  push:
+    branches: [ develop, main ]
+  pull_request:
+    branches: [ develop, main ]
+
+jobs:
+  build-test-coverage:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore dependencies
+        run: dotnet restore MouseGuard.sln
+      - name: Build
+        run: dotnet build MouseGuard.sln --configuration Release --no-restore
+      - name: Test with coverage
+        run: dotnet test MouseGuard.sln --configuration Release --no-build --collect:"XPlat Code Coverage"
+      - name: Generate coverage report
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool
+          reportgenerator -reports:**/coverage.cobertura.xml -targetdir:coverage-report -reporttypes:Html
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: coverage-report

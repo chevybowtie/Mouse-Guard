@@ -27,8 +27,13 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>1.0.8</Version>
+    <Version>1.1.0.1</Version>
     <AppName>MouseGuard</AppName>
   </PropertyGroup>
+
+  <!-- Exclude test project files from the main project's default compile include -->
+  <ItemGroup>
+    <Compile Remove="MouseGuard.Tests\**\*.cs" />
+  </ItemGroup>
 
 </Project>

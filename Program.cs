@@ -67,7 +67,7 @@ class Program
         var settings = SettingsManager.LoadSettings<AppSettings>() ?? new AppSettings();
         if (!string.IsNullOrEmpty(settings.Hotkey))
         {
-            if (TryParseHotkey(settings.Hotkey, out var k))
+            if (HotkeyUtil.TryParse(settings.Hotkey, out var k))
                 currentHotkey = k;
         }
         return settings;
@@ -81,7 +81,7 @@ class Program
         var settings = new AppSettings
         {
             BlockedScreenIndex = blockedScreenIndex ?? InvalidScreenIndex,
-            Hotkey = HotkeyToString(currentHotkey)
+            Hotkey = HotkeyUtil.ToString(currentHotkey)
         };
         SettingsManager.SaveSettings(settings);
     }
@@ -213,8 +213,16 @@ class Program
                 Strings.BlockScreenMenu(i + 1, screen.Primary ? Strings.Primary : "", displayName, screen.Bounds.Width, screen.Bounds.Height))
             {
                 CheckOnClick = true,
-                Checked = blockedScreenIndex == index
+                Checked = blockedScreenIndex == index,
+                // Disable selecting screens when in single-monitor mode
+                Enabled = !(monitorManager != null && monitorManager.IsSingleMonitorMode)
             };
+
+            if (monitorManager != null && monitorManager.IsSingleMonitorMode)
+            {
+                // Provide an explanatory tooltip for disabled items (if tooltips are supported)
+                item.ToolTipText = Strings.SingleMonitorModeMenuLabel;
+            }
 
             // Click handler for screen selection (toggle block/unblock)
             item.Click += (s, e) =>
@@ -334,7 +342,7 @@ class Program
                 currentHotkey = dlg.SelectedHotkey;
                 RegisterHotkey(currentHotkey);
                 SaveSettings();
-                trayIcon!.Text = $"{Strings.TrayIconText} ({(blockingEnabled ? "Blocking" : "Unblocked")})\nHotkey: {HotkeyToString(currentHotkey)}";
+                trayIcon!.Text = TrayTextFormatter.Format(Strings.TrayIconText, blockingEnabled, currentHotkey);
             }
         }
     }
@@ -342,7 +350,7 @@ class Program
     static void OnHotkeyPressed()
     {
         blockingEnabled = !blockingEnabled;
-        trayIcon!.Text = $"{Strings.TrayIconText} ({(blockingEnabled ? "Blocking" : "Unblocked")})\nHotkey: {HotkeyToString(currentHotkey)}";
+        trayIcon!.Text = TrayTextFormatter.Format(Strings.TrayIconText, blockingEnabled, currentHotkey);
     }
 
     /// <summary>
@@ -527,12 +535,11 @@ class Program
 
             foreach (ManagementObject mo in searcher.Get())
             {
-                // InstanceName contains the display device name, e.g., DISPLAY1
                 var instanceName = (string)mo["InstanceName"];
-                if (deviceName.Contains(instanceName.Split('\\').Last()))
+                if (DisplayUtil.DeviceNameContainsInstanceToken(deviceName, instanceName))
                 {
                     var nameArray = (ushort[])mo["UserFriendlyName"];
-                    var name = System.Text.Encoding.UTF8.GetString(nameArray.Select(b => (byte)b).ToArray());
+                    var name = DisplayUtil.UserFriendlyNameFromUShorts(nameArray);
                     return name;
                 }
             }
@@ -578,24 +585,12 @@ class Program
 
     private static string HotkeyToString(Keys keys)
     {
-        var parts = new List<string>();
-        if (keys.HasFlag(Keys.Control)) parts.Add("Control");
-        if (keys.HasFlag(Keys.Alt)) parts.Add("Alt");
-        if (keys.HasFlag(Keys.Shift)) parts.Add("Shift");
-        parts.Add((keys & Keys.KeyCode).ToString());
-        return string.Join(",", parts);
+        return HotkeyUtil.ToString(keys);
     }
 
     private static bool TryParseHotkey(string s, out Keys keys)
     {
-        keys = Keys.None;
-        var parts = s.Split(',');
-        foreach (var p in parts)
-        {
-            if (Enum.TryParse<Keys>(p, out var k))
-                keys |= k;
-        }
-        return keys != Keys.None;
+        return HotkeyUtil.TryParse(s, out keys);
     }
 
     // --- Message filter for hotkey ---
