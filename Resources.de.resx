@@ -51,4 +51,10 @@ Die Anwendung wird in der Taskleiste ausgeführt, aber die Sperrfunktion ist dea
   <data name="SingleMonitorModeMenuLabel" xml:space="preserve">
     <value>Ein Monitor erkannt - Sperrung deaktiviert</value>
   </data>
+  <data name="SingleInstanceWarningTitle" xml:space="preserve">
+    <value>Bereits ausgeführt</value>
+  </data>
+  <data name="SingleInstanceWarningMessage" xml:space="preserve">
+    <value>Mouse Guard wird bereits ausgeführt. Es darf nur eine Instanz laufen.</value>
+  </data>
 </root>
