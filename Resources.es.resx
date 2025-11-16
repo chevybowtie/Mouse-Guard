@@ -51,4 +51,10 @@ La aplicación se ejecutará en la bandeja del sistema, pero la funcionalidad de
   <data name="SingleMonitorModeMenuLabel" xml:space="preserve">
     <value>Monitor único detectado - bloqueo deshabilitado</value>
   </data>
+    <data name="SingleInstanceWarningTitle" xml:space="preserve">
+      <value>Ya se está ejecutando</value>
+    </data>
+    <data name="SingleInstanceWarningMessage" xml:space="preserve">
+      <value>Mouse Guard ya se está ejecutando. Solo se permite una instancia.</value>
+    </data>
 </root>

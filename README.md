@@ -70,6 +70,7 @@ You can build MouseGuard using Visual Studio or the .NET CLI.
 - [x] Store monitor DeviceName (or EDID) instead of screen index so user selection survives monitor reordering
 - [x] If a user only has one monitor connected/detected, show a warning and disable blocking functionality; dynamically detect monitor count changes and re-enable functionality when a second monitor is connected.
 - [x] Add icon fallback and dispose file-loaded icon on exit; ensure resources (`icon`, `trayIcon`, `timers`, `notifications`) are properly disposed on exit.
+ - [x] Only allow one copy to run at a time
 
 ### Pending
 

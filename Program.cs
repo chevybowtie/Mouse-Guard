@@ -38,6 +38,9 @@ class Program
     static MonitorManager? monitorManager;
     // Loaded icon resource for proper disposal
     static Icon? loadedIcon = null;
+    // Single instance guard
+    static SingleInstance? singleInstance = null;
+    static HiddenMessageWindow? messageWindow = null;
 
     // Hotkey constants
     private const int WM_HOTKEY = 0x0312;
@@ -150,6 +153,55 @@ class Program
     [STAThread]
     static void Main()
     {
+        // Enforce single-instance: per-user mutex
+        try
+        {
+            var sanitizedUser = Environment.UserName?.Replace("\\", "_")?.Replace("/", "_") ?? "user";
+            var mutexName = $"MouseGuard_{sanitizedUser}";
+            singleInstance = new SingleInstance(mutexName);
+            if (!singleInstance.IsFirstInstance)
+            {
+                // Secondary instance: notify the primary via PostMessage if available
+                try
+                {
+                    WM_SHOW_INSTANCE = NativeMessages.RegisterWindowMessage("MouseGuard_ShowInstance");
+                    MessageWindowName = $"MouseGuard_MessageWindow_{sanitizedUser}";
+                    var hwnd = NativeMessages.FindWindow(null, MessageWindowName);
+                    if (hwnd != IntPtr.Zero)
+                    {
+                        NativeMessages.PostMessage(hwnd, WM_SHOW_INSTANCE, IntPtr.Zero, IntPtr.Zero);
+                        // give primary a moment to show the notification; fallback to balloon if not received
+                        System.Threading.Thread.Sleep(NotificationDurationMs);
+                    }
+                    else
+                    {
+                        // no primary window; show a short-lived tray balloon here as a fallback
+                        using var tmpIcon = new NotifyIcon
+                        {
+                            Icon = LoadTrayIcon(),
+                            Visible = true,
+                            Text = Strings.TrayIconText
+                        };
+                        tmpIcon.BalloonTipTitle = Strings.SingleInstanceWarningTitle;
+                        tmpIcon.BalloonTipText = Strings.SingleInstanceWarningMessage;
+                        tmpIcon.ShowBalloonTip(NotificationDurationMs);
+                        System.Threading.Thread.Sleep(NotificationDurationMs);
+                        tmpIcon.Visible = false;
+                    }
+                }
+                catch
+                {
+                    // If IPC fails, just show a MessageBox as a last resort
+                    try { MessageBox.Show(Strings.SingleInstanceWarningMessage, Strings.SingleInstanceWarningTitle, MessageBoxButtons.OK, MessageBoxIcon.Information); } catch { }
+                }
+                return;
+            }
+        }
+        catch
+        {
+            // If the single-instance check fails to initialize, proceed (do not block startup)
+        }
+
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
 
@@ -195,6 +247,18 @@ class Program
             Visible = true,
             ContextMenuStrip = BuildContextMenu()
         };
+
+        // Register window message and create a hidden message window that can receive PostMessage notifications
+        try
+        {
+            WM_SHOW_INSTANCE = NativeMessages.RegisterWindowMessage("MouseGuard_ShowInstance");
+            var sanitizedUser = Environment.UserName?.Replace("\\", "_")?.Replace("/", "_") ?? "user";
+            MessageWindowName = $"MouseGuard_MessageWindow_{sanitizedUser}";
+            messageWindow = new HiddenMessageWindow(MessageWindowName);
+            // We don't need to Show() the window — just ensure its handle is created so FindWindow can find it
+            var handle = messageWindow.Handle;
+        }
+        catch { }
 
         // Register global hotkey
         RegisterHotkey(currentHotkey);
@@ -562,6 +626,13 @@ class Program
         }
         
         Application.Exit();
+
+        // Release the single-instance mutex
+        singleInstance?.Dispose();
+        singleInstance = null;
+        // Dispose message window if present
+        try { messageWindow?.Close(); messageWindow?.Dispose(); } catch { }
+        messageWindow = null;
     }
 
     /// <summary>
@@ -649,6 +720,22 @@ class Program
             }
             return false;
         }
+    }
+
+    // --- IPC: RegisterWindowMessage + PostMessage helpers ---
+    static uint WM_SHOW_INSTANCE = 0;
+    static string? MessageWindowName = null;
+    private static class NativeMessages
+    {
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        public static extern uint RegisterWindowMessage(string lpString);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        public static extern IntPtr FindWindow(string? lpClassName, string? lpWindowName);
     }
 
     // --- Hotkey selection dialog ---
@@ -744,4 +831,46 @@ class Program
             base.OnFormClosed(e);
         }
     }
+
+        /// <summary>
+        /// Hidden message-only window used to receive PostMessage notifications from secondary instances.
+        /// </summary>
+        class HiddenMessageWindow : Form
+        {
+            private readonly string _name;
+            public HiddenMessageWindow(string name)
+            {
+                _name = name;
+                // Hide window from taskbar and off-screen
+                ShowInTaskbar = false;
+                FormBorderStyle = FormBorderStyle.None;
+                StartPosition = FormStartPosition.Manual;
+                Location = new Point(-10000, -10000);
+                Size = new Size(1, 1);
+                Text = name; // Use the window name so FindWindow can locate it
+            }
+
+            protected override void WndProc(ref Message m)
+            {
+                if (m.Msg == WM_SHOW_INSTANCE)
+                {
+                    try
+                    {
+                        // Show notification via the primary tray icon if available
+                        if (trayIcon != null)
+                        {
+                            trayIcon.ShowBalloonTip(NotificationDurationMs, Strings.SingleInstanceWarningTitle, Strings.SingleInstanceWarningMessage, ToolTipIcon.Info);
+                        }
+                        else
+                        {
+                            using var tmp = new NotifyIcon { Icon = LoadTrayIcon(), Visible = true };
+                            tmp.ShowBalloonTip(NotificationDurationMs, Strings.SingleInstanceWarningTitle, Strings.SingleInstanceWarningMessage, ToolTipIcon.Info);
+                        }
+                    }
+                    catch { }
+                    return;
+                }
+                base.WndProc(ref m);
+            }
+        }
 }
