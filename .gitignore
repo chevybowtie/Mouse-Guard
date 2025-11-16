@@ -34,3 +34,5 @@ packages/
 _ReSharper*/
 *.resharper
 *.sln.ide
+coverage-report/
+MouseGuard.Tests/TestResults
