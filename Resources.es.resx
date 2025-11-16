@@ -31,7 +31,8 @@
     <value>Seleccionar tecla rápida</value>
   </data>
   <data name="HotkeyDialogPrompt" xml:space="preserve">
-    <value>Presione nueva tecla rápida (Esc=Cancelar, Enter=OK):\n{0}</value>
+    <value>Presione nueva tecla rápida (Esc=Cancelar, Enter=OK):
+{0}</value>
   </data>
   <data name="NotificationTitle" xml:space="preserve">
     <value>Ratón bloqueado</value>
@@ -43,7 +44,9 @@
     <value>Se requieren múltiples monitores</value>
   </data>
   <data name="SingleMonitorWarningMessage" xml:space="preserve">
-    <value>Mouse Guard requiere al menos 2 monitores para funcionar correctamente. Actualmente solo se detecta 1 monitor.\n\nLa aplicación se ejecutará en la bandeja del sistema, pero la funcionalidad de bloqueo está deshabilitada hasta que se conecte un segundo monitor.</value>
+    <value>Mouse Guard requiere al menos 2 monitores para funcionar correctamente. Actualmente solo se detecta 1 monitor.
+
+La aplicación se ejecutará en la bandeja del sistema, pero la funcionalidad de bloqueo está deshabilitada hasta que se conecte un segundo monitor.</value>
   </data>
   <data name="SingleMonitorModeMenuLabel" xml:space="preserve">
     <value>Monitor único detectado - bloqueo deshabilitado</value>
