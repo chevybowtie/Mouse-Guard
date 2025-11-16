@@ -83,6 +83,12 @@ You can build MouseGuard using Visual Studio or the .NET CLI.
 - [ ] Replace broad `catch { }` with logging to a file in LocalAppData for later diagnostics
 - [ ] Move heavy operations (ManagementObjectSearcher) off the UI thread or cache results
 - [ ] Create an installer
+- [ ] Track cursor visibility instead of calling `ShowCursor` every tick so hiding still works during a block *
+- [ ] Ensure the cursor is teleported to an unblocked screen (or disallow blocking the primary display) *
+- [ ] Keep monitoring for display changes in multi-monitor mode and clear the blocked screen when it disappears *
+- [ ] Refresh stored monitor selections when device names change or disappear *
+
+* Important
 
 ### Testing
 
