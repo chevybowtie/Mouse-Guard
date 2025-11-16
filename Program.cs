@@ -588,51 +588,17 @@ class Program
     /// </summary>
     static void Exit()
     {
-        // Unregister hotkey
-        UnregisterHotkey();
-        
-        // Stop and dispose timers
-        if (monitorTimer != null)
-        {
-            monitorTimer.Stop();
-            monitorTimer.Dispose();
-        }
-        
-        if (monitorCountTimer != null)
-        {
-            monitorCountTimer.Stop();
-            monitorCountTimer.Dispose();
-        }
-        
-        // Close any open notification
-        if (silentNotification != null)
-        {
-            silentNotification.Close();
-            silentNotification = null;
-        }
-        
-        // Dispose tray icon
-        if (trayIcon != null)
-        {
-            trayIcon.Visible = false;
-            trayIcon.Dispose();
-        }
-        
-        // Dispose loaded icon if it was loaded from file
-        if (loadedIcon != null)
-        {
-            loadedIcon.Dispose();
-            loadedIcon = null;
-        }
-        
+        CleanupResources();
         Application.Exit();
+    }
 
-        // Release the single-instance mutex
-        singleInstance?.Dispose();
-        singleInstance = null;
-        // Dispose message window if present
-        try { messageWindow?.Close(); messageWindow?.Dispose(); } catch { }
-        messageWindow = null;
+    /// <summary>
+    /// Dispose timers, tray icon, notifications, and single-instance artifacts without exiting the application (testable cleanup).
+    /// </summary>
+    internal static void CleanupResources()
+    {
+        UnregisterHotkey();
+        ResourceCleanup.Cleanup(ref monitorTimer, ref monitorCountTimer, ref trayIcon, ref silentNotification, ref loadedIcon, ref singleInstance, ref messageWindow);
     }
 
     /// <summary>
@@ -777,7 +743,7 @@ class Program
     }
 
     // --- Silent notification form (no sound, no taskbar) ---
-    class SilentNotification : Form
+    internal class SilentNotification : Form
     {
         private System.Windows.Forms.Timer timer;
         public SilentNotification(string title, string message)
@@ -835,7 +801,7 @@ class Program
         /// <summary>
         /// Hidden message-only window used to receive PostMessage notifications from secondary instances.
         /// </summary>
-        class HiddenMessageWindow : Form
+        internal class HiddenMessageWindow : Form
         {
             private readonly string _name;
             public HiddenMessageWindow(string name)
