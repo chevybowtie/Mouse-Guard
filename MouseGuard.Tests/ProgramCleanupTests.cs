@@ -20,22 +20,33 @@ namespace MouseGuard.Tests
             var loadedIconField = programType.GetField("loadedIcon", BindingFlags.Static | BindingFlags.NonPublic);
             var messageWindowField = programType.GetField("messageWindow", BindingFlags.Static | BindingFlags.NonPublic);
 
+            // Verify reflection returned valid fields
+            Assert.NotNull(monitorTimerField);
+            Assert.NotNull(monitorCountTimerField);
+            Assert.NotNull(trayIconField);
+            Assert.NotNull(silentNotificationField);
+            Assert.NotNull(loadedIconField);
+            Assert.NotNull(messageWindowField);
+
             // Set to non-null dummy values
-            monitorTimerField.SetValue(null, new System.Windows.Forms.Timer());
-            monitorCountTimerField.SetValue(null, new System.Windows.Forms.Timer());
-            trayIconField.SetValue(null, new System.Windows.Forms.NotifyIcon());
+            monitorTimerField!.SetValue(null, new System.Windows.Forms.Timer());
+            monitorCountTimerField!.SetValue(null, new System.Windows.Forms.Timer());
+            trayIconField!.SetValue(null, new System.Windows.Forms.NotifyIcon());
             // Create an instance of the nested private type Program.SilentNotification via reflection
             var silentType = programType.GetNestedType("SilentNotification", BindingFlags.NonPublic);
-            var silentInstance = Activator.CreateInstance(silentType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new object[] { "title", "msg" }, null);
+            Assert.NotNull(silentType);
+            var silentInstance = Activator.CreateInstance(silentType!, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new object[] { "title", "msg" }, null);
             silentNotificationField.SetValue(null, silentInstance);
 
             // Set the loaded icon by cloning a system icon so we can safely dispose it
-            loadedIconField.SetValue(null, (System.Drawing.Icon)System.Drawing.SystemIcons.Application.Clone());
+            Assert.NotNull(loadedIconField);
+            loadedIconField!.SetValue(null, (System.Drawing.Icon)System.Drawing.SystemIcons.Application.Clone());
 
             // Create a hidden message window instance and assign
             var hiddenType = programType.GetNestedType("HiddenMessageWindow", BindingFlags.NonPublic | BindingFlags.Public);
-            var hiddenInstance = Activator.CreateInstance(hiddenType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new object[] { "testwin" }, null);
-            messageWindowField.SetValue(null, hiddenInstance);
+            Assert.NotNull(hiddenType);
+            var hiddenInstance = Activator.CreateInstance(hiddenType!, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new object[] { "testwin" }, null);
+            messageWindowField!.SetValue(null, hiddenInstance);
 
             // Act
             Program.CleanupResources();
