@@ -661,7 +661,8 @@ class Program
             return true;
         }
 
-        SettingsManager.LogError(errorMessage ?? $"Failed to register hotkey '{HotkeyUtil.ToString(keys)}'.");
+        var logMessage = errorMessage ?? $"Failed to register hotkey '{HotkeyUtil.ToString(keys)}'.";
+        SettingsManager.LogError(logMessage);
 
         string? restoreErrorMessage = null;
         if (previouslyRegistered && TryRegisterHotkey(previousHotkey, out restoreErrorMessage))
@@ -694,14 +695,14 @@ class Program
     private static bool TryRegisterHotkey(Keys keys, out string? errorMessage)
     {
         errorMessage = null;
-        if (!HotkeyUtil.TryGetKeyCode(keys, out var keyCode))
+        if (!HotkeyUtil.HasKeyCode(keys))
         {
             errorMessage = $"Skipped registering invalid hotkey '{keys}' because it does not include a non-modifier key.";
             return false;
         }
 
         var (mod, vk) = KeysToModifiersAndVk(keys);
-        if ((uint)keyCode == vk && registerHotKeyCallback(IntPtr.Zero, HOTKEY_ID, mod, vk))
+        if (registerHotKeyCallback(IntPtr.Zero, HOTKEY_ID, mod, vk))
             return true;
 
         errorMessage = $"Failed to register hotkey '{HotkeyUtil.ToString(keys)}' (Win32 error {getLastWin32ErrorCallback()}).";

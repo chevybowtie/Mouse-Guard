@@ -49,7 +49,7 @@ namespace MouseGuard
                 if (normalizedKeyCode == Keys.None)
                     return false;
 
-                if (keyCode != Keys.None && keyCode != normalizedKeyCode)
+                if (keyCode != Keys.None)
                     return false;
 
                 keyCode = normalizedKeyCode;

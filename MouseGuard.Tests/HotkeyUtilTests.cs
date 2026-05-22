@@ -49,6 +49,13 @@ public class HotkeyUtilTests
         Assert.Equal(Keys.None, k);
     }
 
+    [Fact]
+    public void TryParse_DuplicateKeyCode_ReturnsFalse()
+    {
+        Assert.False(HotkeyUtil.TryParse("Control,A,A", out var k));
+        Assert.Equal(Keys.None, k);
+    }
+
     [Theory]
     [InlineData(Keys.Control, false)]
     [InlineData(Keys.Control | Keys.Alt, false)]
