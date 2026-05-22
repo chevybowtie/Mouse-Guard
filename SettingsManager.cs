@@ -57,10 +57,7 @@ public static class SettingsManager
     {
         try
         {
-            if (!Directory.Exists(LocalAppDataFolder))
-            {
-                Directory.CreateDirectory(LocalAppDataFolder);
-            }
+            EnsureLocalAppDataDirectoryExists();
 
             string logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}";
             if (ex != null)

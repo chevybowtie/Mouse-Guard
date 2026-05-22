@@ -793,7 +793,7 @@ class Program
 
         var previousMenu = trayIcon.ContextMenuStrip;
         trayIcon.ContextMenuStrip = BuildContextMenu();
-        if (previousMenu != null && !ReferenceEquals(previousMenu, trayIcon.ContextMenuStrip))
+        if (previousMenu != null)
         {
             previousMenu.Dispose();
         }
