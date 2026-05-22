@@ -13,6 +13,7 @@ public static class SettingsManager
     private static readonly string LocalAppDataFolder = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "Mouse-Guard");
+    private static readonly string FallbackErrorLogPath = Path.Combine(Path.GetTempPath(), "Mouse-Guard-fallback.log");
 
     private static readonly object _lockObject = new object();
 
@@ -45,7 +46,7 @@ public static class SettingsManager
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Failed to create directory {LocalAppDataFolder}: {ex}");
+            WriteFallbackDiagnostic($"Failed to create directory {LocalAppDataFolder}", ex);
         }
     }
 
@@ -69,7 +70,7 @@ public static class SettingsManager
         }
         catch (Exception logEx)
         {
-            Debug.WriteLine($"Failed to write error log: {logEx}");
+            WriteFallbackDiagnostic("Failed to write error log", logEx);
         }
     }
 
@@ -183,9 +184,33 @@ public static class SettingsManager
                 }
                 catch
                 {
+                    WriteFallbackDiagnostic($"Failed to delete temporary settings file '{tempPath}' during cleanup.");
                 }
                 LogError("Failed to save settings", ex);
             }
+        }
+    }
+
+    private static void WriteFallbackDiagnostic(string message, Exception? ex = null)
+    {
+        var logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}";
+        if (ex != null)
+            logEntry += Environment.NewLine + $"{ex.GetType().Name}: {ex.Message}" + Environment.NewLine + ex.StackTrace;
+
+        try
+        {
+            Trace.WriteLine(logEntry);
+        }
+        catch
+        {
+        }
+
+        try
+        {
+            File.AppendAllText(FallbackErrorLogPath, logEntry + Environment.NewLine);
+        }
+        catch
+        {
         }
     }
 }
