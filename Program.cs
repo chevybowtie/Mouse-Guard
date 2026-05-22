@@ -47,7 +47,11 @@ class Program
     private const int HOTKEY_ID = 0xBEEF;
     private static Keys defaultHotkey = Keys.B | Keys.Control | Keys.Alt;
     private static Keys currentHotkey = defaultHotkey;
+    private static bool hotkeyRegistered = false;
     private static bool blockingEnabled = true;
+    private static Func<IntPtr, int, uint, uint, bool> registerHotKeyCallback = RegisterHotKey;
+    private static Func<IntPtr, int, bool> unregisterHotKeyCallback = UnregisterHotKey;
+    private static Func<int> getLastWin32ErrorCallback = Marshal.GetLastWin32Error;
 
     // Notification flag
     private static bool hasShownBlockNotification = false;
@@ -261,7 +265,7 @@ class Program
         catch { }
 
         // Register global hotkey
-        RegisterHotkey(currentHotkey);
+        ApplyHotkey(currentHotkey);
 
         // Start monitoring mouse position
         monitorTimer = new System.Windows.Forms.Timer { Interval = TimerIntervalMs };
@@ -443,11 +447,8 @@ class Program
         {
             if (dlg.ShowDialog() == DialogResult.OK)
             {
-                // Unregister old hotkey, register new one
-                UnregisterHotkey();
-                currentHotkey = dlg.SelectedHotkey;
-                RegisterHotkey(currentHotkey);
-                SaveSettings();
+                if (ApplyHotkey(dlg.SelectedHotkey))
+                    SaveSettings();
                 trayIcon!.Text = TrayTextFormatter.Format(Strings.TrayIconText, blockingEnabled, currentHotkey);
             }
         }
@@ -639,24 +640,80 @@ class Program
 
     // --- Hotkey registration helpers ---
 
-    [DllImport("user32.dll")]
+    [DllImport("user32.dll", SetLastError = true)]
     private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
 
-    [DllImport("user32.dll")]
+    [DllImport("user32.dll", SetLastError = true)]
     private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
     private static IntPtr mainWindowHandle => Process.GetCurrentProcess().MainWindowHandle;
 
-    private static void RegisterHotkey(Keys keys)
+    private static bool ApplyHotkey(Keys keys)
     {
+        var previousHotkey = currentHotkey;
+        var previouslyRegistered = hotkeyRegistered;
         UnregisterHotkey();
+
+        if (TryRegisterHotkey(keys, out var errorMessage))
+        {
+            currentHotkey = keys;
+            hotkeyRegistered = true;
+            return true;
+        }
+
+        SettingsManager.LogError(errorMessage ?? $"Failed to register hotkey '{HotkeyUtil.ToString(keys)}'.");
+
+        if (previouslyRegistered && TryRegisterHotkey(previousHotkey, out var restoreErrorMessage))
+        {
+            currentHotkey = previousHotkey;
+            hotkeyRegistered = true;
+            return false;
+        }
+
+        if (restoreErrorMessage != null)
+            SettingsManager.LogError(restoreErrorMessage);
+
+        string? fallbackErrorMessage = null;
+        if (keys != defaultHotkey && previousHotkey != defaultHotkey && TryRegisterHotkey(defaultHotkey, out fallbackErrorMessage))
+        {
+            currentHotkey = defaultHotkey;
+            hotkeyRegistered = true;
+            SaveSettings();
+        }
+
+        if (fallbackErrorMessage != null)
+        {
+            SettingsManager.LogError(fallbackErrorMessage);
+        }
+
+        currentHotkey = hotkeyRegistered ? currentHotkey : defaultHotkey;
+        return false;
+    }
+
+    private static bool TryRegisterHotkey(Keys keys, out string? errorMessage)
+    {
+        errorMessage = null;
+        if (!HotkeyUtil.TryGetKeyCode(keys, out var keyCode))
+        {
+            errorMessage = $"Skipped registering invalid hotkey '{keys}' because it does not include a non-modifier key.";
+            return false;
+        }
+
         var (mod, vk) = KeysToModifiersAndVk(keys);
-        RegisterHotKey(IntPtr.Zero, HOTKEY_ID, mod, vk);
+        if ((uint)keyCode == vk && registerHotKeyCallback(IntPtr.Zero, HOTKEY_ID, mod, vk))
+            return true;
+
+        errorMessage = $"Failed to register hotkey '{HotkeyUtil.ToString(keys)}' (Win32 error {getLastWin32ErrorCallback()}).";
+        return false;
     }
 
     private static void UnregisterHotkey()
     {
-        UnregisterHotKey(IntPtr.Zero, HOTKEY_ID);
+        if (!hotkeyRegistered)
+            return;
+
+        unregisterHotKeyCallback(IntPtr.Zero, HOTKEY_ID);
+        hotkeyRegistered = false;
     }
 
     private static (uint, uint) KeysToModifiersAndVk(Keys keys)

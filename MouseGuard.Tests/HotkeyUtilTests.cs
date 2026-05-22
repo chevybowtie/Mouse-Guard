@@ -27,4 +27,35 @@ public class HotkeyUtilTests
         var k = HotkeyUtil.Parse("notakey");
         Assert.Equal(Keys.None, k);
     }
+
+    [Fact]
+    public void TryParse_ModifierOnly_ReturnsFalse()
+    {
+        Assert.False(HotkeyUtil.TryParse("Control,Alt", out var k));
+        Assert.Equal(Keys.None, k);
+    }
+
+    [Fact]
+    public void TryParse_InvalidToken_ReturnsFalse()
+    {
+        Assert.False(HotkeyUtil.TryParse("Control,Nope,B", out var k));
+        Assert.Equal(Keys.None, k);
+    }
+
+    [Fact]
+    public void TryParse_MultipleKeyCodes_ReturnsFalse()
+    {
+        Assert.False(HotkeyUtil.TryParse("Control,A,B", out var k));
+        Assert.Equal(Keys.None, k);
+    }
+
+    [Theory]
+    [InlineData(Keys.Control, false)]
+    [InlineData(Keys.Control | Keys.Alt, false)]
+    [InlineData(Keys.B, true)]
+    [InlineData(Keys.Control | Keys.Alt | Keys.B, true)]
+    public void HasKeyCode_ReturnsExpectedValue(Keys keys, bool expected)
+    {
+        Assert.Equal(expected, HotkeyUtil.HasKeyCode(keys));
+    }
 }

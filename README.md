@@ -77,8 +77,8 @@ You can build MouseGuard using Visual Studio or the .NET CLI.
 
 - [ ] Improve error reporting and logging
 - [ ] Add accessibility features
-- [ ] Validate parsed hotkey has a key code before accepting
-- [ ] Check `RegisterHotKey` result and reflect failure (disable hotkey or notify)
+- [x] Validate parsed hotkey has a key code before accepting
+- [x] Check `RegisterHotKey` result and reflect failure (disable hotkey or notify)
 - [ ] Avoid swallowing exceptions — log to a simple file or at least debug output
 - [ ] Replace broad `catch { }` with logging to a file in LocalAppData for later diagnostics
 - [ ] Move heavy operations (ManagementObjectSearcher) off the UI thread or cache results
