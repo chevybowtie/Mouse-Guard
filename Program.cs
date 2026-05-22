@@ -663,7 +663,8 @@ class Program
 
         SettingsManager.LogError(errorMessage ?? $"Failed to register hotkey '{HotkeyUtil.ToString(keys)}'.");
 
-        if (previouslyRegistered && TryRegisterHotkey(previousHotkey, out var restoreErrorMessage))
+        string? restoreErrorMessage = null;
+        if (previouslyRegistered && TryRegisterHotkey(previousHotkey, out restoreErrorMessage))
         {
             currentHotkey = previousHotkey;
             hotkeyRegistered = true;
