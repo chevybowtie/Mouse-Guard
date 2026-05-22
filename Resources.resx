@@ -57,4 +57,13 @@ The application will run in the system tray but blocking functionality is disabl
   <data name="SingleInstanceWarningMessage" xml:space="preserve">
     <value>Mouse Guard is already running. Only one instance is allowed.</value>
   </data>
+  <data name="HotkeyUnavailable" xml:space="preserve">
+    <value>Hotkey unavailable</value>
+  </data>
+  <data name="HotkeyRegistrationFailedTitle" xml:space="preserve">
+    <value>Hotkey unavailable</value>
+  </data>
+  <data name="HotkeyRegistrationFailedMessage" xml:space="preserve">
+    <value>The hotkey {0} could not be registered. Mouse Guard will continue without a global hotkey.</value>
+  </data>
 </root>

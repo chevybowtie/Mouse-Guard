@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace MouseGuard;
@@ -44,8 +45,7 @@ public static class SettingsManager
         }
         catch (Exception ex)
         {
-            // Log but don't throw - caller should handle gracefully
-            LogError($"Failed to create directory {LocalAppDataFolder}", ex);
+            Debug.WriteLine($"Failed to create directory {LocalAppDataFolder}: {ex}");
         }
     }
 
@@ -56,16 +56,20 @@ public static class SettingsManager
     {
         try
         {
-            EnsureLocalAppDataDirectoryExists();
+            if (!Directory.Exists(LocalAppDataFolder))
+            {
+                Directory.CreateDirectory(LocalAppDataFolder);
+            }
+
             string logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}";
             if (ex != null)
                 logEntry += Environment.NewLine + $"{ex.GetType().Name}: {ex.Message}" + Environment.NewLine + ex.StackTrace;
             logEntry += Environment.NewLine;
             File.AppendAllText(ErrorLogPath, logEntry);
         }
-        catch
+        catch (Exception logEx)
         {
-            // If logging fails, silently continue - we don't want logging to crash the app
+            Debug.WriteLine($"Failed to write error log: {logEx}");
         }
     }
 
@@ -169,6 +173,17 @@ public static class SettingsManager
             }
             catch (Exception ex)
             {
+                var tempPath = SettingsFilePath + ".tmp";
+                try
+                {
+                    if (File.Exists(tempPath))
+                    {
+                        File.Delete(tempPath);
+                    }
+                }
+                catch
+                {
+                }
                 LogError("Failed to save settings", ex);
             }
         }

@@ -25,5 +25,9 @@ namespace MouseGuard
         public static string SingleMonitorModeMenuLabel => RM.GetString("SingleMonitorModeMenuLabel", CultureInfo.CurrentUICulture) ?? "Single monitor detected - blocking disabled";
         public static string SingleInstanceWarningTitle => RM.GetString("SingleInstanceWarningTitle", CultureInfo.CurrentUICulture) ?? "Already running";
         public static string SingleInstanceWarningMessage => RM.GetString("SingleInstanceWarningMessage", CultureInfo.CurrentUICulture) ?? "Mouse Guard is already running. Only one instance is allowed.";
+        public static string HotkeyUnavailable => RM.GetString("HotkeyUnavailable", CultureInfo.CurrentUICulture) ?? "Hotkey unavailable";
+        public static string HotkeyRegistrationFailedTitle => RM.GetString("HotkeyRegistrationFailedTitle", CultureInfo.CurrentUICulture) ?? "Hotkey unavailable";
+        public static string HotkeyRegistrationFailedMessage(string hotkey) =>
+            string.Format(RM.GetString("HotkeyRegistrationFailedMessage", CultureInfo.CurrentUICulture) ?? "The hotkey {0} could not be registered. Mouse Guard will continue without a global hotkey.", hotkey);
     }
 }

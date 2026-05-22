@@ -39,6 +39,7 @@ namespace MouseGuard
             // Dispose tray icon
             if (trayIcon != null)
             {
+                try { trayIcon.ContextMenuStrip?.Dispose(); } catch { }
                 try { trayIcon.Visible = false; } catch { }
                 try { trayIcon.Dispose(); } catch { }
                 trayIcon = null;

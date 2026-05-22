@@ -33,7 +33,10 @@ MouseGuard is especially useful in scenarios where you want to prevent the mouse
 
 ## Settings
 
-Settings (blocked screen and hotkey) are saved to `settings.json` in the application directory.
+Settings (blocked screen and hotkey) are saved to `%LOCALAPPDATA%\Mouse-Guard\settings.json`.
+Runtime errors are logged to `%LOCALAPPDATA%\Mouse-Guard\error.log`.
+
+If the configured global hotkey cannot be registered because another application is already using it, Mouse Guard will keep running and show that the hotkey is unavailable.
 
 ## Build / Compile
 

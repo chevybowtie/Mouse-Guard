@@ -47,7 +47,10 @@ class Program
     private const int HOTKEY_ID = 0xBEEF;
     private static Keys defaultHotkey = Keys.B | Keys.Control | Keys.Alt;
     private static Keys currentHotkey = defaultHotkey;
+    private static bool hotkeyRegistered = false;
     private static bool blockingEnabled = true;
+    private static readonly CursorVisibilityController cursorVisibility = new(visible => ShowCursor(visible));
+    private static readonly MonitorNameCache monitorNameCache = new(TryResolveMonitorFriendlyName);
 
     // Notification flag
     private static bool hasShownBlockNotification = false;
@@ -74,7 +77,14 @@ class Program
         if (!string.IsNullOrEmpty(settings.Hotkey))
         {
             if (HotkeyUtil.TryParse(settings.Hotkey, out var k))
+            {
                 currentHotkey = k;
+            }
+            else
+            {
+                SettingsManager.LogError($"Invalid hotkey '{settings.Hotkey}' found in settings. Falling back to default hotkey.");
+                currentHotkey = defaultHotkey;
+            }
         }
 
         // Migrate old configuration: convert index to DeviceName for reliability if needed
@@ -111,14 +121,15 @@ class Program
         try
         {
             // Try to load custom icon from file
-            if (File.Exists("MouseGuard.ico"))
+            var iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "MouseGuard.ico");
+            if (File.Exists(iconPath))
             {
-                loadedIcon = new Icon("MouseGuard.ico");
+                loadedIcon = new Icon(iconPath);
                 return loadedIcon;
             }
             else
             {
-                SettingsManager.LogError("MouseGuard.ico not found, falling back to system icon");
+                SettingsManager.LogError($"MouseGuard.ico not found at '{iconPath}', falling back to system icon");
             }
         }
         catch (Exception ex)
@@ -189,17 +200,19 @@ class Program
                         tmpIcon.Visible = false;
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    SettingsManager.LogError("Failed to notify the primary instance from a secondary launch.", ex);
                     // If IPC fails, just show a MessageBox as a last resort
                     try { MessageBox.Show(Strings.SingleInstanceWarningMessage, Strings.SingleInstanceWarningTitle, MessageBoxButtons.OK, MessageBoxIcon.Information); } catch { }
                 }
                 return;
             }
         }
-        catch
+        catch (Exception ex)
         {
             // If the single-instance check fails to initialize, proceed (do not block startup)
+            SettingsManager.LogError("Single-instance initialization failed. Continuing without single-instance protection.", ex);
         }
 
         Application.EnableVisualStyles();
@@ -243,7 +256,7 @@ class Program
         trayIcon = new NotifyIcon
         {
             Icon = LoadTrayIcon(),
-            Text = Strings.TrayIconText,
+            Text = TrayTextFormatter.Format(Strings.TrayIconText, blockingEnabled, currentHotkey, hotkeyRegistered: true),
             Visible = true,
             ContextMenuStrip = BuildContextMenu()
         };
@@ -258,10 +271,14 @@ class Program
             // We don't need to Show() the window — just ensure its handle is created so FindWindow can find it
             var handle = messageWindow.Handle;
         }
-        catch { }
+        catch (Exception ex)
+        {
+            SettingsManager.LogError("Failed to initialize hidden message window for single-instance notifications.", ex);
+        }
 
         // Register global hotkey
-        RegisterHotkey(currentHotkey);
+        InitializeHotkey();
+        UpdateTrayText();
 
         // Start monitoring mouse position
         monitorTimer = new System.Windows.Forms.Timer { Interval = TimerIntervalMs };
@@ -310,9 +327,7 @@ class Program
             var screen = screens[i];
             // Get friendly monitor name if available
             string? monitorName = GetMonitorFriendlyName(screen.DeviceName);
-            string displayName = monitorName != null
-                ? $"{monitorName} ({screen.DeviceName})"
-                : screen.DeviceName;
+            string displayName = DisplayUtil.ComposeDisplayName(screen.DeviceName, monitorName);
 
             // Context menu building
             var item = new ToolStripMenuItem(
@@ -351,7 +366,7 @@ class Program
 
                 // Immediately update the menu to reflect the new state
                 // (rebuilds the menu so the checked state is always correct)
-                trayIcon!.ContextMenuStrip = BuildContextMenu();
+                RefreshContextMenu();
             };
 
             menu.Items.Add(item);
@@ -444,11 +459,7 @@ class Program
             if (dlg.ShowDialog() == DialogResult.OK)
             {
                 // Unregister old hotkey, register new one
-                UnregisterHotkey();
-                currentHotkey = dlg.SelectedHotkey;
-                RegisterHotkey(currentHotkey);
-                SaveSettings();
-                trayIcon!.Text = TrayTextFormatter.Format(Strings.TrayIconText, blockingEnabled, currentHotkey);
+                ApplyHotkeySelection(dlg.SelectedHotkey);
             }
         }
     }
@@ -456,7 +467,7 @@ class Program
     static void OnHotkeyPressed()
     {
         blockingEnabled = !blockingEnabled;
-        trayIcon!.Text = TrayTextFormatter.Format(Strings.TrayIconText, blockingEnabled, currentHotkey);
+        UpdateTrayText();
     }
 
     /// <summary>
@@ -467,14 +478,14 @@ class Program
         // If in single-monitor mode, don't do anything
         if (monitorManager != null && monitorManager.IsSingleMonitorMode)
         {
-            ShowCursor(true);
+            cursorVisibility.EnsureVisible();
             hasShownBlockNotification = false;
             return;
         }
 
         if (!blockingEnabled)
         {
-            ShowCursor(true);
+            cursorVisibility.EnsureVisible();
             hasShownBlockNotification = false;
             // Do not close notification here
             // silentNotification?.Close();
@@ -491,6 +502,7 @@ class Program
                 // Trigger monitor count check
                 CheckMonitorCount(null, EventArgs.Empty);
             }
+            cursorVisibility.EnsureVisible();
             hasShownBlockNotification = false;
             // Do not close notification here
             // silentNotification?.Close();
@@ -512,7 +524,7 @@ class Program
                 int safeX = safe.X + safe.Width / 2;
                 int safeY = safe.Y + safe.Height / 2;
                 SetCursorPos(safeX, safeY);
-                ShowCursor(false);
+                cursorVisibility.EnsureHidden();
 
                 // Notification usage
                 if (!hasShownBlockNotification)
@@ -527,7 +539,7 @@ class Program
         else
         {
             // Show cursor if not on blocked screen
-            ShowCursor(true);
+            cursorVisibility.EnsureVisible();
             hasShownBlockNotification = false;
             // Do not close notification here
             // silentNotification?.Close();
@@ -561,12 +573,13 @@ class Program
     static void OnTransitionedToSingleMonitor(object? sender, EventArgs e)
     {
         ShowSingleMonitorWarning();
+        cursorVisibility.EnsureVisible();
         // Clear blocked screen since we can't block with only one monitor
         blockedScreenIndex = null;
         SaveSettings();
+        monitorNameCache.Clear();
         // Rebuild menu to reflect the change
-        if (trayIcon != null)
-            trayIcon.ContextMenuStrip = BuildContextMenu();
+        RefreshContextMenu();
         // Start the monitor count timer to detect when a second monitor is added
         monitorCountTimer?.Start();
     }
@@ -576,9 +589,9 @@ class Program
     /// </summary>
     static void OnTransitionedToMultiMonitor(object? sender, EventArgs e)
     {
+        monitorNameCache.Clear();
         // Rebuild menu to show available screens
-        if (trayIcon != null)
-            trayIcon.ContextMenuStrip = BuildContextMenu();
+        RefreshContextMenu();
         // Stop the monitor count timer since we don't need it in multi-monitor mode
         monitorCountTimer?.Stop();
     }
@@ -588,6 +601,7 @@ class Program
     /// </summary>
     static void Exit()
     {
+        cursorVisibility.EnsureVisible();
         CleanupResources();
         Application.Exit();
 
@@ -605,6 +619,7 @@ class Program
     internal static void CleanupResources()
     {
         UnregisterHotkey();
+        cursorVisibility.EnsureVisible();
         ResourceCleanup.Cleanup(ref monitorTimer, ref monitorCountTimer, ref trayIcon, ref silentNotification, ref loadedIcon, ref singleInstance, ref messageWindow);
     }
 
@@ -612,6 +627,11 @@ class Program
     /// Gets the monitor model name for a given device name (e.g., \\.\DISPLAY1).
     /// </summary>
     static string? GetMonitorFriendlyName(string deviceName)
+    {
+        return monitorNameCache.GetFriendlyName(deviceName);
+    }
+
+    static string? TryResolveMonitorFriendlyName(string deviceName)
     {
         try
         {
@@ -630,9 +650,9 @@ class Program
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore errors and fallback to device name
+            SettingsManager.LogError($"Failed to resolve friendly monitor name for '{deviceName}'.", ex);
         }
         return null;
     }
@@ -647,16 +667,49 @@ class Program
 
     private static IntPtr mainWindowHandle => Process.GetCurrentProcess().MainWindowHandle;
 
-    private static void RegisterHotkey(Keys keys)
+    private static void InitializeHotkey()
+    {
+        if (RegisterHotkey(currentHotkey))
+            return;
+
+        if (currentHotkey != defaultHotkey)
+        {
+            SettingsManager.LogError($"Configured hotkey '{HotkeyUtil.ToString(currentHotkey)}' could not be registered. Falling back to default hotkey.");
+            currentHotkey = defaultHotkey;
+            if (RegisterHotkey(currentHotkey))
+                return;
+        }
+
+        NotifyHotkeyRegistrationFailure(currentHotkey);
+    }
+
+    private static bool RegisterHotkey(Keys keys)
     {
         UnregisterHotkey();
+        if (!HotkeyUtil.HasKeyCode(keys))
+        {
+            SettingsManager.LogError($"Cannot register hotkey '{HotkeyUtil.ToString(keys)}' because it does not include a valid key code.");
+            hotkeyRegistered = false;
+            return false;
+        }
+
         var (mod, vk) = KeysToModifiersAndVk(keys);
-        RegisterHotKey(IntPtr.Zero, HOTKEY_ID, mod, vk);
+        hotkeyRegistered = RegisterHotKey(IntPtr.Zero, HOTKEY_ID, mod, vk);
+        if (!hotkeyRegistered)
+        {
+            SettingsManager.LogError($"RegisterHotKey failed for '{HotkeyUtil.ToString(keys)}'.");
+        }
+
+        return hotkeyRegistered;
     }
 
     private static void UnregisterHotkey()
     {
+        if (!hotkeyRegistered)
+            return;
+
         UnregisterHotKey(IntPtr.Zero, HOTKEY_ID);
+        hotkeyRegistered = false;
     }
 
     private static (uint, uint) KeysToModifiersAndVk(Keys keys)
@@ -677,6 +730,73 @@ class Program
     private static bool TryParseHotkey(string s, out Keys keys)
     {
         return HotkeyUtil.TryParse(s, out keys);
+    }
+
+    private static void ApplyHotkeySelection(Keys selectedHotkey)
+    {
+        var previousHotkey = currentHotkey;
+        currentHotkey = selectedHotkey;
+
+        if (RegisterHotkey(currentHotkey))
+        {
+            SaveSettings();
+            UpdateTrayText();
+            return;
+        }
+
+        SettingsManager.LogError($"Failed to apply selected hotkey '{HotkeyUtil.ToString(selectedHotkey)}'. Reverting to previous hotkey.");
+        currentHotkey = previousHotkey;
+        if (!RegisterHotkey(previousHotkey))
+        {
+            NotifyHotkeyRegistrationFailure(previousHotkey);
+        }
+
+        UpdateTrayText();
+        NotifyHotkeyRegistrationFailure(selectedHotkey);
+    }
+
+    private static void NotifyHotkeyRegistrationFailure(Keys failedHotkey)
+    {
+        var hotkeyText = string.IsNullOrWhiteSpace(HotkeyUtil.ToString(failedHotkey))
+            ? "Unknown"
+            : HotkeyUtil.ToString(failedHotkey);
+
+        try
+        {
+            if (trayIcon != null)
+            {
+                trayIcon.ShowBalloonTip(
+                    NotificationDurationMs,
+                    Strings.HotkeyRegistrationFailedTitle,
+                    Strings.HotkeyRegistrationFailedMessage(hotkeyText),
+                    ToolTipIcon.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            SettingsManager.LogError("Failed to show hotkey registration failure notification.", ex);
+        }
+    }
+
+    private static void UpdateTrayText()
+    {
+        if (trayIcon == null)
+            return;
+
+        trayIcon.Text = TrayTextFormatter.Format(Strings.TrayIconText, blockingEnabled, currentHotkey, hotkeyRegistered);
+    }
+
+    private static void RefreshContextMenu()
+    {
+        if (trayIcon == null)
+            return;
+
+        var previousMenu = trayIcon.ContextMenuStrip;
+        trayIcon.ContextMenuStrip = BuildContextMenu();
+        if (previousMenu != null && !ReferenceEquals(previousMenu, trayIcon.ContextMenuStrip))
+        {
+            previousMenu.Dispose();
+        }
     }
 
     // --- Message filter for hotkey ---
@@ -840,7 +960,10 @@ class Program
                             tmp.ShowBalloonTip(NotificationDurationMs, Strings.SingleInstanceWarningTitle, Strings.SingleInstanceWarningMessage, ToolTipIcon.Info);
                         }
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        SettingsManager.LogError("Failed to show single-instance balloon tip.", ex);
+                    }
                     return;
                 }
                 base.WndProc(ref m);

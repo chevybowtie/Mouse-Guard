@@ -7,14 +7,21 @@ public class TrayFormatterTests
     [Fact]
     public void Format_IncludesStatusAndHotkey()
     {
-        var text = TrayTextFormatter.Format("Mouse Guard", true, Keys.Control | Keys.Alt | Keys.B);
+        var text = TrayTextFormatter.Format("Mouse Guard", true, Keys.Control | Keys.Alt | Keys.B, hotkeyRegistered: true);
         Assert.Equal("Mouse Guard (Blocking) - Hotkey: Control,Alt,B", text);
     }
 
     [Fact]
     public void Format_UnblockedStatus()
     {
-        var text = TrayTextFormatter.Format("Mouse Guard", false, Keys.Control | Keys.Alt | Keys.B);
+        var text = TrayTextFormatter.Format("Mouse Guard", false, Keys.Control | Keys.Alt | Keys.B, hotkeyRegistered: true);
         Assert.Equal("Mouse Guard (Unblocked) - Hotkey: Control,Alt,B", text);
+    }
+
+    [Fact]
+    public void Format_HotkeyUnavailableStatus()
+    {
+        var text = TrayTextFormatter.Format("Mouse Guard", true, Keys.Control | Keys.Alt | Keys.B, hotkeyRegistered: false);
+        Assert.Equal("Mouse Guard (Blocking) - Hotkey unavailable", text);
     }
 }

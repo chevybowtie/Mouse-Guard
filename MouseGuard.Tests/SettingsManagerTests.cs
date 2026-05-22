@@ -35,6 +35,20 @@ public class SettingsManagerTests
     }
 
     [Fact]
+    public void LogError_CreatesErrorLogFile()
+    {
+        if (File.Exists(SettingsManager.ErrorLogPath))
+        {
+            File.Delete(SettingsManager.ErrorLogPath);
+        }
+
+        SettingsManager.LogError("test log message");
+
+        Assert.True(File.Exists(SettingsManager.ErrorLogPath));
+        Assert.Contains("test log message", File.ReadAllText(SettingsManager.ErrorLogPath));
+    }
+
+    [Fact]
     public void EnsureLocalAppDataDirectoryExists_CreatesDirectory()
     {
         // Arrange
@@ -79,6 +93,25 @@ public class SettingsManagerTests
         // Assert
         Assert.NotNull(settings);
         Assert.Equal(default(string), settings.Value);
+    }
+
+    [Fact]
+    public void LoadSettings_InvalidJson_ReturnsDefaultAndLogsError()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(SettingsManager.SettingsFilePath)!);
+        File.WriteAllText(SettingsManager.SettingsFilePath, "{ invalid json ]");
+
+        if (File.Exists(SettingsManager.ErrorLogPath))
+        {
+            File.Delete(SettingsManager.ErrorLogPath);
+        }
+
+        var settings = SettingsManager.LoadSettings<TestSettings>();
+
+        Assert.NotNull(settings);
+        Assert.Null(settings.Value);
+        Assert.True(File.Exists(SettingsManager.ErrorLogPath));
+        Assert.Contains("Failed to load settings", File.ReadAllText(SettingsManager.ErrorLogPath));
     }
 
     [Fact]
@@ -151,6 +184,24 @@ public class SettingsManagerTests
         
         // Verify no temp file is left behind
         Assert.False(File.Exists(SettingsManager.SettingsFilePath + ".tmp"));
+    }
+
+    [Fact]
+    public void SaveSettings_WhenSerializationFails_CleansUpTempFileAndLogsError()
+    {
+        if (File.Exists(SettingsManager.ErrorLogPath))
+        {
+            File.Delete(SettingsManager.ErrorLogPath);
+        }
+
+        var invalid = new CyclicSettings();
+        invalid.Self = invalid;
+
+        SettingsManager.SaveSettings(invalid);
+
+        Assert.False(File.Exists(SettingsManager.SettingsFilePath + ".tmp"));
+        Assert.True(File.Exists(SettingsManager.ErrorLogPath));
+        Assert.Contains("Failed to save settings", File.ReadAllText(SettingsManager.ErrorLogPath));
     }
 
     [Fact]
@@ -267,5 +318,10 @@ public class SettingsManagerTests
     private class TestSettings
     {
         public string? Value { get; set; }
+    }
+
+    private class CyclicSettings
+    {
+        public CyclicSettings? Self { get; set; }
     }
 }
