@@ -182,9 +182,9 @@ public static class SettingsManager
                         File.Delete(tempPath);
                     }
                 }
-                catch
+                catch (Exception cleanupEx)
                 {
-                    WriteFallbackDiagnostic($"Failed to delete temporary settings file '{tempPath}' during cleanup.");
+                    WriteFallbackDiagnostic($"Failed to delete temporary settings file '{tempPath}' during cleanup.", cleanupEx);
                 }
                 LogError("Failed to save settings", ex);
             }

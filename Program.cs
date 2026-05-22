@@ -256,7 +256,7 @@ class Program
         trayIcon = new NotifyIcon
         {
             Icon = LoadTrayIcon(),
-            Text = TrayTextFormatter.Format(Strings.TrayIconText, blockingEnabled, currentHotkey, hotkeyRegistered: true),
+            Text = Strings.TrayIconText,
             Visible = true,
             ContextMenuStrip = BuildContextMenu()
         };
